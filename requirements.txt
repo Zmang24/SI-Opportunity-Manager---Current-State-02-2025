@@ -1,0 +1,18 @@
+# Database
+sqlalchemy>=1.4.0
+psycopg2-binary>=2.9.0
+python-dotenv>=0.19.0
+
+# Authentication
+PyJWT>=2.4.0
+bcrypt>=3.2.0
+
+# UI
+PyQt5>=5.15.0
+
+# Utilities
+python-dateutil>=2.8.2
+pillow>=9.0.0  # For image handling
+win10toast>=0.9.0  # For Windows notifications
+pywin32>=305  # Required for Windows notifications and system tray integration
+openpyxl==3.1.2 

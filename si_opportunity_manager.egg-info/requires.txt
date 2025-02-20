@@ -1,0 +1,8 @@
+sqlalchemy
+alembic
+psycopg2-binary
+PyQt5
+python-dotenv
+passlib
+bcrypt
+python-jose

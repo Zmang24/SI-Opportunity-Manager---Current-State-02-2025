@@ -1,0 +1,3220 @@
+﻿Year,Make,Model
+2012,Acura,MDX
+2012,Acura,RDX
+2012,Acura,RL
+2012,Acura,TL
+2012,Acura,TSX
+2012,Acura,ZDX
+2013,Acura,ILX
+2013,Acura,MDX
+2013,Acura,RDX
+2013,Acura,TL
+2013,Acura,TSX
+2013,Acura,ZDX
+2014,Acura,ILX
+2014,Acura,MDX
+2014,Acura,RDX
+2014,Acura,RLX
+2014,Acura,TL
+2014,Acura,TSX
+2015,Acura,ILX
+2015,Acura,MDX
+2015,Acura,RDX
+2015,Acura,RLX
+2015,Acura,TLX
+2016,Acura,ILX
+2016,Acura,MDX
+2016,Acura,RDX
+2016,Acura,RLX
+2016,Acura,TLX
+2017,Acura,ILX
+2017,Acura,MDX
+2017,Acura,NSX
+2017,Acura,RDX
+2017,Acura,RLX
+2017,Acura,TLX
+2018,Acura,ILX
+2018,Acura,MDX
+2018,Acura,NSX
+2018,Acura,RDX
+2018,Acura,RLX
+2018,Acura,TLX
+2019,Acura,ILX
+2019,Acura,MDX
+2019,Acura,NSX
+2019,Acura,RDX
+2019,Acura,RLX
+2019,Acura,TLX
+2020,Acura,ILX
+2020,Acura,MDX
+2020,Acura,NSX
+2020,Acura,RDX
+2020,Acura,RLX
+2020,Acura,TLX
+2021,Acura,ILX
+2021,Acura,RDX
+2021,Acura,TLX
+2022,Acura,ILX
+2022,Acura,MDX
+2022,Acura,NSX
+2022,Acura,RDX
+2022,Acura,TLX
+2023,Acura,Integra
+2023,Acura,MDX
+2023,Acura,RDX
+2023,Acura,TLX
+2024,Acura,Integra
+2024,Acura,MDX
+2024,Acura,RDX
+2024,Acura,TLX
+2018,Alfa Romeo,Stelvio
+2019,Alfa Romeo,Stelvio
+2020,Alfa Romeo,Stelvio
+2021,Alfa Romeo,Stelvio
+2022,Alfa Romeo,Stelvio
+2023,Alfa Romeo,Stelvio
+2024,Alfa Romeo,Stelvio
+2012,Audi,A3
+2012,Audi,A4
+2012,Audi,A5
+2012,Audi,A6
+2012,Audi,A7
+2012,Audi,A8
+2012,Audi,Q5
+2012,Audi,Q7
+2012,Audi,R8
+2012,Audi,RS 5
+2012,Audi,S4
+2012,Audi,S5
+2012,Audi,SQ5
+2012,Audi,TT
+2013,Audi,A3
+2013,Audi,A4
+2013,Audi,A5
+2013,Audi,A6
+2013,Audi,A7
+2013,Audi,A8
+2013,Audi,Q5
+2013,Audi,RS 5
+2013,Audi,S4
+2013,Audi,S5
+2013,Audi,SQ5
+2014,Audi,A4
+2014,Audi,A5
+2014,Audi,A6
+2014,Audi,A7
+2014,Audi,Q5
+2014,Audi,RS 5
+2014,Audi,S4
+2014,Audi,S5
+2014,Audi,SQ5
+2014,Audi,TT
+2015,Audi,A3
+2015,Audi,A4
+2015,Audi,A5
+2015,Audi,A6
+2015,Audi,A7
+2015,Audi,A8
+2015,Audi,Q3
+2015,Audi,Q5
+2015,Audi,Q7
+2015,Audi,R8
+2015,Audi,RS 5
+2015,Audi,S4
+2015,Audi,S5
+2015,Audi,SQ5
+2015,Audi,TT
+2016,Audi,A3
+2016,Audi,A4
+2016,Audi,A5
+2016,Audi,A6
+2016,Audi,A7
+2016,Audi,A8
+2016,Audi,Q3
+2016,Audi,Q5
+2016,Audi,Q7
+2016,Audi,RS 5
+2016,Audi,S4
+2016,Audi,S5
+2016,Audi,SQ5
+2016,Audi,TT
+2017,Audi,A3
+2017,Audi,A4
+2017,Audi,A4 Allroad
+2017,Audi,A5
+2017,Audi,A6
+2017,Audi,A7
+2017,Audi,A8
+2017,Audi,Q3
+2017,Audi,Q5
+2017,Audi,Q7
+2017,Audi,R8
+2017,Audi,RS 5
+2017,Audi,S4
+2017,Audi,S5
+2017,Audi,SQ5
+2017,Audi,TT
+2018,Audi,A3
+2018,Audi,A4
+2018,Audi,A4 Allroad
+2018,Audi,A5
+2018,Audi,A6
+2018,Audi,A7
+2018,Audi,A8
+2018,Audi,Q3
+2018,Audi,Q5
+2018,Audi,Q7
+2018,Audi,R8
+2018,Audi,RS 5
+2018,Audi,S4
+2018,Audi,S5
+2018,Audi,SQ5
+2018,Audi,TT
+2019,Audi,A3
+2019,Audi,A4
+2019,Audi,A4 Allroad
+2019,Audi,A5
+2019,Audi,A6
+2019,Audi,A7
+2019,Audi,A8
+2019,Audi,Q3
+2019,Audi,Q5
+2019,Audi,Q7
+2019,Audi,Q8
+2019,Audi,R8
+2019,Audi,RS 5
+2019,Audi,RS Q8
+2019,Audi,S4
+2019,Audi,S5
+2019,Audi,S8
+2019,Audi,SQ5
+2019,Audi,TT
+2020,Audi,A3
+2020,Audi,A4
+2020,Audi,A4 Allroad
+2020,Audi,A5
+2020,Audi,A6
+2020,Audi,A6 Allroad
+2020,Audi,A7
+2020,Audi,A8
+2020,Audi,Q3
+2020,Audi,Q5
+2020,Audi,Q7
+2020,Audi,Q8
+2020,Audi,R8
+2020,Audi,RS 5
+2020,Audi,RS Q8
+2020,Audi,S4
+2020,Audi,S5
+2020,Audi,S7
+2020,Audi,S8
+2020,Audi,SQ5
+2020,Audi,TT
+2021,Audi,A3
+2021,Audi,A4
+2021,Audi,A4 Allroad
+2021,Audi,A5
+2021,Audi,A6
+2021,Audi,A6 Allroad
+2021,Audi,A7
+2021,Audi,A8
+2021,Audi,Q3
+2021,Audi,Q5
+2021,Audi,Q7
+2021,Audi,Q8
+2021,Audi,R8
+2021,Audi,RS 5
+2021,Audi,RS 6
+2021,Audi,RS Q8
+2021,Audi,S4
+2021,Audi,S5
+2021,Audi,S7
+2021,Audi,S8
+2021,Audi,SQ5
+2021,Audi,TT
+2022,Audi,A3
+2022,Audi,A4
+2022,Audi,A4 Allroad
+2022,Audi,A5
+2022,Audi,A6
+2022,Audi,A6 Allroad
+2022,Audi,A7
+2022,Audi,A8
+2022,Audi,Q3
+2022,Audi,Q5
+2022,Audi,Q7
+2022,Audi,Q8
+2022,Audi,R8
+2022,Audi,RS 5
+2022,Audi,RS 6
+2022,Audi,RS Q8
+2022,Audi,S3
+2022,Audi,S4
+2022,Audi,S5
+2022,Audi,S7
+2022,Audi,S8
+2022,Audi,SQ5
+2022,Audi,TT
+2023,Audi,A3
+2023,Audi,A4
+2023,Audi,A4 Allroad
+2023,Audi,A5
+2023,Audi,A6
+2023,Audi,A6 Allroad
+2023,Audi,A7
+2023,Audi,A8
+2023,Audi,Q3
+2023,Audi,Q4
+2023,Audi,Q5
+2023,Audi,Q7
+2023,Audi,Q8
+2023,Audi,R8
+2023,Audi,RS 3
+2023,Audi,RS 5
+2023,Audi,RS 6
+2023,Audi,RS 7
+2023,Audi,RS Q8
+2023,Audi,S3
+2023,Audi,S4
+2023,Audi,S5
+2023,Audi,S6
+2023,Audi,S7
+2023,Audi,S8
+2023,Audi,SQ5
+2023,Audi,SQ
+2023,Audi,SQ8
+2023,Audi,TT
+2024,Audi,A3
+2024,Audi,A4
+2024,Audi,A4 Allroad
+2024,Audi,A5
+2024,Audi,A6
+2024,Audi,A6 Allroad
+2024,Audi,A7
+2024,Audi,A8
+2024,Audi,Q3
+2024,Audi,Q4
+2024,Audi,Q5
+2024,Audi,Q7
+2024,Audi,Q8
+2024,Audi,R8
+2024,Audi,RS Q8
+2024,Audi,RS 3
+2024,Audi,RS 5
+2024,Audi,RS 7
+2024,Audi,S3
+2024,Audi,S4
+2024,Audi,S5
+2024,Audi,S6
+2024,Audi,S7
+2024,Audi,S8
+2024,Audi,SQ5
+2024,Audi,SQ7
+2024,Audi,SQ8
+2023,Bmw,iX
+2023,Bmw,X3
+2023,Bmw,X5
+2023,Bmw,X6
+2023,Bmw,530I
+2023,Bmw,330I
+2023,Bmw,M4
+2023,Bmw,M440I
+2024,Bmw,M8
+2024,Bmw,X5
+2012,Buick,Enclave
+2012,Buick,Lacrosse
+2012,Buick,Regal
+2012,Buick,Verano
+2013,Buick,Enclave
+2013,Buick,Encore
+2013,Buick,Lacrosse
+2013,Buick,Regal
+2013,Buick,Verano
+2014,Buick,Enclave
+2014,Buick,Encore
+2014,Buick,Lacrosse
+2014,Buick,Regal
+2014,Buick,Verano
+2015,Buick,Enclave
+2015,Buick,Encore
+2015,Buick,Lacrosse
+2015,Buick,Regal
+2015,Buick,Verano
+2016,Buick,Cascada
+2016,Buick,Enclave
+2016,Buick,Encore
+2016,Buick,Envision
+2016,Buick,Lacrosse
+2016,Buick,Regal
+2016,Buick,Verano
+2017,Buick,Cascada
+2017,Buick,Enclave
+2017,Buick,Encore
+2017,Buick,Envision
+2017,Buick,Lacrosse
+2017,Buick,Regal
+2017,Buick,Verano
+2018,Buick,Cascada
+2018,Buick,Enclave
+2018,Buick,Encore
+2018,Buick,Envision
+2018,Buick,Lacrosse
+2018,Buick,Regal
+2019,Buick,Cascada
+2019,Buick,Enclave
+2019,Buick,Encore
+2019,Buick,Envision
+2019,Buick,Lacrosse
+2019,Buick,Regal
+2020,Buick,Enclave
+2020,Buick,Encore
+2020,Buick,Envision
+2020,Buick,Regal
+2021,Buick,Enclave
+2021,Buick,Encore
+2021,Buick,Envision
+2022,Buick,Enclave
+2022,Buick,Encore
+2022,Buick,Envision
+2023,Buick,Enclave
+2023,Buick,Encore GX
+2023,Buick,Envision
+2024,Buick,Enclave
+2024,Buick,Encore GX
+2024,Buick,Envista
+2012,Cadillac,CTS
+2012,Cadillac,Escalade
+2012,Cadillac,SRX
+2013,Cadillac,ATS
+2013,Cadillac,CTS
+2013,Cadillac,Escalade
+2013,Cadillac,SRX
+2013,Cadillac,XTS
+2014,Cadillac,ATS
+2014,Cadillac,CTS
+2014,Cadillac,ELR
+2014,Cadillac,Escalade
+2014,Cadillac,SRX
+2014,Cadillac,XTS
+2015,Cadillac,ATS
+2015,Cadillac,CTS
+2015,Cadillac,ELR
+2015,Cadillac,Escalade
+2015,Cadillac,SRX
+2015,Cadillac,XTS
+2016,Cadillac,ATS
+2016,Cadillac,CT6
+2016,Cadillac,CTS
+2016,Cadillac,ELR
+2016,Cadillac,Escalade
+2016,Cadillac,SRX
+2016,Cadillac,XTS
+2017,Cadillac,ATS
+2017,Cadillac,CT6
+2017,Cadillac,CTS
+2017,Cadillac,Escalade
+2017,Cadillac,XT5
+2017,Cadillac,XTS
+2018,Cadillac,ATS
+2018,Cadillac,CT6
+2018,Cadillac,CTS
+2018,Cadillac,Escalade
+2018,Cadillac,XT5
+2018,Cadillac,XTS
+2019,Cadillac,ATS
+2019,Cadillac,CT6
+2019,Cadillac,CTS
+2019,Cadillac,Escalade
+2019,Cadillac,XT4
+2019,Cadillac,XT5
+2019,Cadillac,XTS
+2020,Cadillac,CT4
+2020,Cadillac,CT5
+2020,Cadillac,CT6
+2020,Cadillac,Escalade
+2020,Cadillac,XT4
+2020,Cadillac,XT5
+2020,Cadillac,XT6
+2021,Cadillac,CT4
+2021,Cadillac,CT5
+2021,Cadillac,Escalade
+2021,Cadillac,XT4
+2021,Cadillac,XT5
+2021,Cadillac,XT6
+2022,Cadillac,CT4
+2022,Cadillac,CT5
+2022,Cadillac,Escalade
+2022,Cadillac,XT4
+2022,Cadillac,XT5
+2022,Cadillac,XT6
+2023,Cadillac,CT4
+2023,Cadillac,CT5
+2023,Cadillac,Escalade
+2023,Cadillac,Escalade ESV
+2023,Cadillac,Lyriq
+2023,Cadillac,XT4
+2023,Cadillac,XT5
+2023,Cadillac,XT6
+2024,Cadillac,CT4
+2024,Cadillac,CT5
+2024,Cadillac,Escalade
+2024,Cadillac,Escalade ESV
+2024,Cadillac,Lyriq
+2024,Cadillac,XT4
+2024,Cadillac,XT5
+2024,Cadillac,XT6
+2012,Chevrolet,Avalanche
+2012,Chevrolet,Aveo
+2012,Chevrolet,Camaro
+2012,Chevrolet,Cruze
+2012,Chevrolet,Equinox
+2012,Chevrolet,Express
+2012,Chevrolet,Spark
+2012,Chevrolet,Suburban
+2012,Chevrolet,Tahoe
+2012,Chevrolet,Traverse
+2012,Chevrolet,Volt
+2013,Chevrolet,Avalanche
+2013,Chevrolet,Camaro
+2013,Chevrolet,Colorado
+2013,Chevrolet,Cruze
+2013,Chevrolet,Equinox
+2013,Chevrolet,Express
+2013,Chevrolet,Malibu
+2013,Chevrolet,Spark
+2013,Chevrolet,Suburban
+2013,Chevrolet,Tahoe
+2013,Chevrolet,Trailblazer
+2013,Chevrolet,Traverse
+2013,Chevrolet,Trax
+2013,Chevrolet,Volt
+2014,Chevrolet,Camaro
+2014,Chevrolet,Colorado
+2014,Chevrolet,Corvette
+2014,Chevrolet,Cruze
+2014,Chevrolet,Equinox
+2014,Chevrolet,Express
+2014,Chevrolet,Impala
+2014,Chevrolet,Malibu
+2014,Chevrolet,Sonic
+2014,Chevrolet,Spark
+2014,Chevrolet,SS
+2014,Chevrolet,Suburban
+2014,Chevrolet,Tahoe
+2014,Chevrolet,Traverse
+2014,Chevrolet,Trax
+2014,Chevrolet,Volt
+2015,Chevrolet,Camaro
+2015,Chevrolet,Caprice
+2015,Chevrolet,City Express
+2015,Chevrolet,Colorado
+2015,Chevrolet,Corvette
+2015,Chevrolet,Cruze
+2015,Chevrolet,Equinox
+2015,Chevrolet,Express
+2015,Chevrolet,Impala
+2015,Chevrolet,Malibu
+2015,Chevrolet,Sonic
+2015,Chevrolet,Spark
+2015,Chevrolet,SS
+2015,Chevrolet,Suburban
+2015,Chevrolet,Tahoe
+2015,Chevrolet,Traverse
+2015,Chevrolet,Trax
+2015,Chevrolet,Volt
+2016,Chevrolet,Camaro
+2016,Chevrolet,Caprice
+2016,Chevrolet,Colorado
+2016,Chevrolet,Corvette
+2016,Chevrolet,Cruze
+2016,Chevrolet,Equinox
+2016,Chevrolet,Express
+2016,Chevrolet,Impala
+2016,Chevrolet,Malibu
+2016,Chevrolet,Sonic
+2016,Chevrolet,Spark
+2016,Chevrolet,SS
+2016,Chevrolet,Suburban
+2016,Chevrolet,Tahoe
+2016,Chevrolet,Traverse
+2016,Chevrolet,Trax
+2016,Chevrolet,Volt
+2017,Chevrolet,Bolt EV
+2017,Chevrolet,Camaro
+2017,Chevrolet,City Express
+2017,Chevrolet,Colorado
+2017,Chevrolet,Corvette
+2017,Chevrolet,Cruze
+2017,Chevrolet,Equinox
+2017,Chevrolet,Impala
+2017,Chevrolet,Malibu
+2017,Chevrolet,Sonic
+2017,Chevrolet,Spark
+2017,Chevrolet,SS
+2017,Chevrolet,Suburban
+2017,Chevrolet,Tahoe
+2017,Chevrolet,Trailblazer
+2017,Chevrolet,Traverse
+2017,Chevrolet,Trax
+2017,Chevrolet,Volt
+2018,Chevrolet,Aveo
+2018,Chevrolet,Bolt EV
+2018,Chevrolet,Camaro
+2018,Chevrolet,Cavalier
+2018,Chevrolet,City Express
+2018,Chevrolet,Colorado
+2018,Chevrolet,Corvette
+2018,Chevrolet,Cruze
+2018,Chevrolet,Equinox
+2018,Chevrolet,Express
+2018,Chevrolet,Impala
+2018,Chevrolet,Malibu
+2018,Chevrolet,Sonic
+2018,Chevrolet,Spark
+2018,Chevrolet,Suburban
+2018,Chevrolet,Tahoe
+2018,Chevrolet,Trailblazer
+2018,Chevrolet,Traverse
+2018,Chevrolet,Trax
+2018,Chevrolet,Volt
+2019,Chevrolet,Aveo
+2019,Chevrolet,Blazer
+2019,Chevrolet,Bolt EV
+2019,Chevrolet,Camaro
+2019,Chevrolet,Colorado
+2019,Chevrolet,Corvette
+2019,Chevrolet,Cruze
+2019,Chevrolet,Equinox
+2019,Chevrolet,Express
+2019,Chevrolet,Impala
+2019,Chevrolet,Malibu
+2019,Chevrolet,Sonic
+2019,Chevrolet,Spark
+2019,Chevrolet,Suburban
+2019,Chevrolet,Tahoe
+2019,Chevrolet,Trailblazer
+2019,Chevrolet,Traverse
+2019,Chevrolet,Trax
+2019,Chevrolet,Volt
+2020,Chevrolet,Aveo
+2020,Chevrolet,Blazer
+2020,Chevrolet,Bolt EV
+2020,Chevrolet,Camaro
+2020,Chevrolet,Cavalier
+2020,Chevrolet,Colorado
+2020,Chevrolet,Corvette
+2020,Chevrolet,Equinox
+2020,Chevrolet,Express
+2020,Chevrolet,Impala
+2020,Chevrolet,Malibu
+2020,Chevrolet,Sonic
+2020,Chevrolet,Spark
+2020,Chevrolet,Suburban
+2020,Chevrolet,Tahoe
+2020,Chevrolet,Trailblazer
+2020,Chevrolet,Traverse
+2020,Chevrolet,Trax
+2021,Chevrolet,Aveo
+2021,Chevrolet,Blazer
+2021,Chevrolet,Bolt EV
+2021,Chevrolet,Camaro
+2021,Chevrolet,Cavalier
+2021,Chevrolet,Colorado
+2021,Chevrolet,Corvette
+2021,Chevrolet,Equinox
+2021,Chevrolet,Express
+2021,Chevrolet,Malibu
+2021,Chevrolet,Onix
+2021,Chevrolet,Spark
+2021,Chevrolet,Suburban
+2021,Chevrolet,Tahoe
+2021,Chevrolet,Tracker
+2021,Chevrolet,Trailblazer
+2021,Chevrolet,Traverse
+2021,Chevrolet,Trax
+2022,Chevrolet,Aveo
+2022,Chevrolet,Blazer
+2022,Chevrolet,Bolt EUV
+2022,Chevrolet,Bolt EV
+2022,Chevrolet,Camaro
+2022,Chevrolet,Cavalier
+2022,Chevrolet,Colorado
+2022,Chevrolet,Corvette
+2022,Chevrolet,Equinox
+2022,Chevrolet,Express
+2022,Chevrolet,Malibu
+2022,Chevrolet,Spark
+2022,Chevrolet,Suburban
+2022,Chevrolet,Tahoe
+2022,Chevrolet,Tracker
+2022,Chevrolet,Trailblazer
+2022,Chevrolet,Traverse
+2022,Chevrolet,Trax
+2023,Chevrolet,Blazer
+2023,Chevrolet,Bolt EUV
+2023,Chevrolet,Bolt EV
+2023,Chevrolet,Camaro
+2023,Chevrolet,Colorado
+2023,Chevrolet,Corvette
+2023,Chevrolet,Equinox
+2023,Chevrolet,Express
+2023,Chevrolet,Malibu
+2023,Chevrolet,Onix
+2023,Chevrolet,Suburban
+2023,Chevrolet,Tahoe
+2023,Chevrolet,Tracker
+2023,Chevrolet,Trailblazer
+2023,Chevrolet,Traverse
+2024,Chevrolet,Blazer
+2024,Chevrolet,Blazer EV
+2024,Chevrolet,Camaro
+2024,Chevrolet,Cavalier
+2024,Chevrolet,Colorado
+2024,Chevrolet,Corvette
+2024,Chevrolet,Equinox
+2024,Chevrolet,Express
+2024,Chevrolet,Malibu
+2024,Chevrolet,Onix
+2024,Chevrolet,Suburban
+2024,Chevrolet,Tahoe
+2024,Chevrolet,Tracker
+2024,Chevrolet,Trailblazer
+2024,Chevrolet,Trax
+2012,Chrysler,200
+2012,Chrysler,300
+2013,Chrysler,200
+2013,Chrysler,300
+2014,Chrysler,200
+2014,Chrysler,300
+2015,Chrysler,200
+2015,Chrysler,300
+2016,Chrysler,200
+2016,Chrysler,300
+2017,Chrysler,200
+2017,Chrysler,300
+2017,Chrysler,Pacifica
+2018,Chrysler,300
+2018,Chrysler,Pacifica
+2019,Chrysler,300
+2019,Chrysler,Pacifica
+2020,Chrysler,300
+2020,Chrysler,Pacifica
+2020,Chrysler,Voyager
+2021,Chrysler,300
+2021,Chrysler,Pacifica
+2021,Chrysler,Voyager
+2022,Chrysler,300
+2022,Chrysler,Pacifica
+2022,Chrysler,Voyager
+2023,Chrysler,300
+2023,Chrysler,Pacifica
+2023,Chrysler,Voyager
+2024,Chrysler,Pacifica
+2024,Chrysler,Voyager
+2012,Dodge,Avenger
+2012,Dodge,Caravan
+2012,Dodge,Challenger
+2012,Dodge,Charger
+2012,Dodge,Durango
+2012,Dodge,Journey
+2013,Dodge,Avenger
+2013,Dodge,Caravan
+2013,Dodge,Challenger
+2013,Dodge,Charger
+2013,Dodge,Dart
+2013,Dodge,Durango
+2013,Dodge,Journey
+2013,Dodge,Viper
+2014,Dodge,Avenger
+2014,Dodge,Caravan
+2014,Dodge,Challenger
+2014,Dodge,Charger
+2014,Dodge,Dart
+2014,Dodge,Durango
+2014,Dodge,Journey
+2014,Dodge,Viper
+2015,Dodge,Caravan
+2015,Dodge,Challenger
+2015,Dodge,Charger
+2015,Dodge,Dart
+2015,Dodge,Durango
+2015,Dodge,Journey
+2015,Dodge,Viper
+2016,Dodge,Caravan
+2016,Dodge,Challenger
+2016,Dodge,Charger
+2016,Dodge,Dart
+2016,Dodge,Durango
+2016,Dodge,Journey
+2016,Dodge,Viper
+2017,Dodge,Grand Caravan
+2017,Dodge,Challenger
+2017,Dodge,Charger
+2017,Dodge,Durango
+2017,Dodge,Journey
+2017,Dodge,Viper
+2018,Dodge,Caravan
+2018,Dodge,Challenger
+2018,Dodge,Charger
+2018,Dodge,Durango
+2018,Dodge,Journey
+2019,Dodge,Grand Caravan
+2019,Dodge,Challenger
+2019,Dodge,Charger
+2019,Dodge,Durango
+2019,Dodge,Journey
+2020,Dodge,Grand Caravan
+2020,Dodge,Challenger
+2020,Dodge,Charger
+2020,Dodge,Durango
+2020,Dodge,Journey
+2021,Dodge,Challenger
+2021,Dodge,Charger
+2021,Dodge,Durango
+2022,Dodge,Challenger
+2022,Dodge,Charger
+2022,Dodge,Durango
+2023,Dodge,Challenger
+2023,Dodge,Charger
+2023,Dodge,Durango
+2023,Dodge,Hornet
+2024,Dodge,Durango
+2024,Dodge,Hornet
+2012,Fiat,500
+2013,Fiat,500
+2014,Fiat,500
+2014,Fiat,500L
+2014,Fiat,Freemont
+2015,Fiat,500
+2015,Fiat,500L
+2015,Fiat,500X
+2015,Fiat,Freemont
+2016,Fiat,500
+2016,Fiat,500L
+2016,Fiat,500X
+2016,Fiat,Freemont
+2017,Fiat,500
+2017,Fiat,500L
+2017,Fiat,500X
+2018,Fiat,500
+2018,Fiat,500L
+2018,Fiat,500X
+2019,Fiat,500
+2019,Fiat,500L
+2019,Fiat,500X
+2020,Fiat,500X
+2021,Fiat,500X
+2022,Fiat,500X
+2023,Fiat,500X
+2012,Ford,Edge
+2012,Ford,Escape
+2012,Ford,Expedition
+2012,Ford,Explorer
+2012,Ford,Flex
+2012,Ford,Focus
+2012,Ford,Fusion
+2012,Ford,Mustang
+2012,Ford,Taurus
+2012,Ford,Transit Connect
+2013,Ford,Edge
+2013,Ford,Escape
+2013,Ford,Expedition
+2013,Ford,Explorer
+2013,Ford,Flex
+2013,Ford,Focus
+2013,Ford,Fusion
+2013,Ford,Mustang
+2013,Ford,Taurus
+2013,Ford,Transit Connect
+2014,Ford,Edge
+2014,Ford,Escape
+2014,Ford,Expedition
+2014,Ford,Explorer
+2014,Ford,Fiesta
+2014,Ford,Flex
+2014,Ford,Focus
+2014,Ford,Fusion
+2014,Ford,Mustang
+2014,Ford,Taurus
+2014,Ford,Transit Connect
+2015,Ford,Edge
+2015,Ford,Escape
+2015,Ford,Expedition
+2015,Ford,Explorer
+2015,Ford,Fiesta
+2015,Ford,Flex
+2015,Ford,Focus
+2015,Ford,Fusion
+2015,Ford,Mustang
+2015,Ford,Taurus
+2015,Ford,Transit
+2015,Ford,Transit Connect
+2016,Ford,Edge
+2016,Ford,Escape
+2016,Ford,Expedition
+2016,Ford,Explorer
+2016,Ford,Fiesta
+2016,Ford,Flex
+2016,Ford,Focus
+2016,Ford,Fusion
+2016,Ford,Mustang
+2016,Ford,Taurus
+2016,Ford,Transit
+2016,Ford,Transit Connect
+2017,Ford,Edge
+2017,Ford,Escape
+2017,Ford,Expedition
+2017,Ford,Explorer
+2017,Ford,Fiesta
+2017,Ford,Flex
+2017,Ford,Focus
+2017,Ford,Fusion
+2017,Ford,GT
+2017,Ford,Mustang
+2017,Ford,Taurus
+2017,Ford,Transit
+2017,Ford,Transit Connect
+2018,Ford,Ecosport
+2018,Ford,Edge
+2018,Ford,Escape
+2018,Ford,Expedition
+2018,Ford,Explorer
+2018,Ford,Fiesta
+2018,Ford,Flex
+2018,Ford,Focus
+2018,Ford,Fusion
+2018,Ford,GT
+2018,Ford,Mustang
+2018,Ford,Taurus
+2018,Ford,Transit
+2018,Ford,Transit Connect
+2019,Ford,Ecosport
+2019,Ford,Edge
+2019,Ford,Escape
+2019,Ford,Expedition
+2019,Ford,Explorer
+2019,Ford,Fiesta
+2019,Ford,Flex
+2019,Ford,Fusion
+2019,Ford,GT
+2019,Ford,Mustang
+2019,Ford,Ranger
+2019,Ford,Taurus
+2019,Ford,Transit
+2019,Ford,Transit Connect
+2020,Ford,Ecosport
+2020,Ford,Edge
+2020,Ford,Escape
+2020,Ford,Expedition
+2020,Ford,Explorer
+2020,Ford,Fusion
+2020,Ford,GT
+2020,Ford,Mustang
+2020,Ford,Ranger
+2020,Ford,Transit
+2020,Ford,Transit Connect
+2021,Ford,Bronco
+2021,Ford,Ecosport
+2021,Ford,Edge
+2021,Ford,Escape
+2021,Ford,Expedition
+2021,Ford,Explorer
+2021,Ford,Mustang
+2021,Ford,Ranger
+2021,Ford,Transit Connect
+2022,Ford,Bronco
+2022,Ford,Bronco Sport
+2022,Ford,Edge
+2022,Ford,Escape
+2022,Ford,Expedition
+2022,Ford,Explorer
+2022,Ford,GT
+2022,Ford,Maverick
+2022,Ford,Mustang
+2022,Ford,Ranger
+2022,Ford,Transit
+2023,Ford,Bronco
+2023,Ford,Bronco Sport
+2023,Ford,Edge
+2023,Ford,Escape
+2023,Ford,Expedition
+2023,Ford,Explorer
+2023,Ford,Maverick
+2023,Ford,Mustang
+2023,Ford,Ranger
+2023,Ford,Transit
+2023,Ford,Transit Connect
+2024,Ford,Edge
+2024,Ford,Escape
+2024,Ford,Expedition
+2024,Ford,Maverick
+2024,Ford,Mustang
+2024,Ford,Ranger
+2024,Ford,Transit
+2017,Genesis,G80
+2017,Genesis,G90
+2018,Genesis,G80
+2018,Genesis,G90
+2019,Genesis,G70
+2019,Genesis,G80
+2019,Genesis,G90
+2020,Genesis,G70
+2020,Genesis,G80
+2020,Genesis,G90
+2021,Genesis,G70
+2021,Genesis,G80
+2021,Genesis,G90
+2021,Genesis,GV80
+2022,Genesis,G70
+2022,Genesis,G80
+2022,Genesis,G90
+2022,Genesis,GV70
+2022,Genesis,GV80
+2023,Genesis,G70
+2023,Genesis,G80
+2023,Genesis,G90
+2023,Genesis,GV60
+2023,Genesis,GV70
+2023,Genesis,GV80
+2024,Genesis,G70
+2024,Genesis,G90
+2024,Genesis,GV60
+2024,Genesis,GV70
+2024,Genesis,GV80
+2012,Honda,Accord
+2012,Honda,Civic
+2012,Honda,Crosstour
+2012,Honda,Insight
+2012,Honda,Odyssey
+2012,Honda,Pilot
+2012,Honda,Ridgeline
+2013,Honda,Accord
+2013,Honda,Civic
+2013,Honda,Crosstour
+2013,Honda,Insight
+2013,Honda,Odyssey
+2013,Honda,Pilot
+2013,Honda,Ridgeline
+2014,Honda,Accord
+2014,Honda,Civic
+2014,Honda,Crosstour
+2014,Honda,Insight
+2014,Honda,Odyssey
+2014,Honda,Pilot
+2014,Honda,Ridgeline
+2015,Honda,Accord
+2015,Honda,Civic
+2015,Honda,Crosstour
+2015,Honda,Fit
+2015,Honda,Odyssey
+2015,Honda,Pilot
+2016,Honda,Accord
+2016,Honda,Civic
+2016,Honda,Fit
+2016,Honda,Odyssey
+2016,Honda,Pilot
+2017,Honda,Accord
+2017,Honda,Civic
+2017,Honda,Clarity
+2017,Honda,Fit
+2017,Honda,Odyssey
+2017,Honda,Pilot
+2017,Honda,Ridgeline
+2018,Honda,Accord
+2018,Honda,Civic
+2018,Honda,Clarity
+2018,Honda,Fit
+2018,Honda,Odyssey
+2018,Honda,Pilot
+2018,Honda,Ridgeline
+2019,Honda,Accord
+2019,Honda,Civic
+2019,Honda,Clarity
+2019,Honda,Fit
+2019,Honda,Insight
+2019,Honda,Odyssey
+2019,Honda,Passport
+2019,Honda,Pilot
+2019,Honda,Ridgeline
+2020,Honda,Accord
+2020,Honda,Civic
+2020,Honda,Fit
+2020,Honda,Insight
+2020,Honda,Odyssey
+2020,Honda,Passport
+2020,Honda,Pilot
+2020,Honda,Ridgeline
+2021,Honda,Accord
+2021,Honda,Civic
+2021,Honda,Insight
+2021,Honda,Odyssey
+2021,Honda,Passport
+2021,Honda,Pilot
+2021,Honda,Ridgeline
+2022,Honda,Accord
+2022,Honda,Civic
+2022,Honda,Insight
+2022,Honda,Odyssey
+2022,Honda,Passport
+2022,Honda,Pilot
+2022,Honda,Ridgeline
+2023,Honda,Accord
+2023,Honda,Civic
+2023,Honda,Odyssey
+2023,Honda,Passport
+2023,Honda,Pilot
+2023,Honda,Ridgeline
+2024,Honda,Accord
+2024,Honda,Civic
+2024,Honda,Odyssey
+2024,Honda,Passport
+2024,Honda,Pilot
+2024,Honda,Ridgeline
+2012,Hyundai,Azera
+2012,Hyundai,Elantra
+2012,Hyundai,Equus
+2012,Hyundai,Genesis
+2012,Hyundai,Santa Fe
+2012,Hyundai,Sonata
+2012,Hyundai,Tucson
+2012,Hyundai,Veloster
+2013,Hyundai,Sonata
+2013,Hyundai,Azera
+2013,Hyundai,Elantra
+2013,Hyundai,Equus
+2013,Hyundai,Genesis
+2013,Hyundai,Santa Fe
+2013,Hyundai,Tucson
+2013,Hyundai,Veloster
+2014,Hyundai,Azera
+2014,Hyundai,Elantra
+2014,Hyundai,Equus
+2014,Hyundai,Genesis
+2014,Hyundai,Santa Fe
+2014,Hyundai,Sonata
+2014,Hyundai,Tucson
+2014,Hyundai,Veloster
+2015,Hyundai,Azera
+2015,Hyundai,Elantra
+2015,Hyundai,Equus
+2015,Hyundai,Genesis
+2015,Hyundai,Santa Fe
+2015,Hyundai,Sonata
+2015,Hyundai,Tucson
+2015,Hyundai,Veloster
+2016,Hyundai,Azera
+2016,Hyundai,Elantra
+2016,Hyundai,Equus
+2016,Hyundai,Genesis
+2016,Hyundai,Santa Fe
+2016,Hyundai,Sonata
+2016,Hyundai,Tucson
+2016,Hyundai,Veloster
+2017,Hyundai,Accent
+2017,Hyundai,Azera
+2017,Hyundai,Elantra
+2017,Hyundai,Ioniq
+2017,Hyundai,Santa Fe
+2017,Hyundai,Sonata
+2017,Hyundai,Tucson
+2017,Hyundai,Veloster
+2018,Hyundai,Accent
+2018,Hyundai,Elantra
+2018,Hyundai,Ioniq
+2018,Hyundai,Kona
+2018,Hyundai,Santa Fe
+2018,Hyundai,Sonata
+2018,Hyundai,Tucson
+2018,Hyundai,Veloster
+2019,Hyundai,Accent
+2019,Hyundai,Elantra
+2019,Hyundai,Ioniq
+2019,Hyundai,Kona
+2019,Hyundai,Nexo
+2019,Hyundai,Santa Fe
+2019,Hyundai,Sonata
+2019,Hyundai,Tucson
+2019,Hyundai,Veloster
+2020,Hyundai,Accent
+2020,Hyundai,Elantra
+2020,Hyundai,Ioniq
+2020,Hyundai,Kona
+2020,Hyundai,Nexo
+2020,Hyundai,Palisade
+2020,Hyundai,Santa Fe
+2020,Hyundai,Sonata
+2020,Hyundai,Tucson
+2020,Hyundai,Veloster
+2020,Hyundai,Venue
+2021,Hyundai,Accent
+2021,Hyundai,Elantra
+2021,Hyundai,Ioniq
+2021,Hyundai,Kona
+2021,Hyundai,Nexo
+2021,Hyundai,Palisade
+2021,Hyundai,Santa Fe
+2021,Hyundai,Sonata
+2021,Hyundai,Tucson
+2021,Hyundai,Veloster
+2021,Hyundai,Venue
+2022,Hyundai,Accent
+2022,Hyundai,Elantra
+2022,Hyundai,Ioniq
+2022,Hyundai,Kona
+2022,Hyundai,Nexo
+2022,Hyundai,Palisade
+2022,Hyundai,Santa Cruz
+2022,Hyundai,Santa Fe
+2022,Hyundai,Sonata
+2022,Hyundai,Tucson
+2022,Hyundai,Veloster
+2022,Hyundai,Venue
+2023,Hyundai,Elantra
+2023,Hyundai,Ioniq 5
+2023,Hyundai,Ioniq 6
+2023,Hyundai,Kona
+2023,Hyundai,Kona Electric
+2023,Hyundai,Kona N
+2023,Hyundai,Nexo
+2023,Hyundai,Palisade
+2023,Hyundai,Santa Cruz
+2023,Hyundai,Santa Fe
+2023,Hyundai,Sonata
+2023,Hyundai,Tucson
+2023,Hyundai,Venue
+2024,Hyundai,Elantra N
+2024,Hyundai,Ioniq 5
+2024,Hyundai,Ioniq 6
+2024,Hyundai,Kona Electric
+2024,Hyundai,Nexo
+2024,Hyundai,Palisade
+2024,Hyundai,Santa Cruz
+2024,Hyundai,Sonata
+2024,Hyundai,Venue
+2012,Infiniti,EX35
+2012,Infiniti,QX56
+2013,Infiniti,EX35
+2013,Infiniti,G37
+2013,Infiniti,M37
+2014,Infiniti,Q50
+2014,Infiniti,Q60
+2014,Infiniti,Q70
+2014,Infiniti,QX50
+2014,Infiniti,QX60
+2014,Infiniti,QX70
+2014,Infiniti,QX80
+2015,Infiniti,Q40
+2015,Infiniti,Q50
+2015,Infiniti,Q60
+2015,Infiniti,Q70
+2015,Infiniti,QX50
+2015,Infiniti,QX60
+2015,Infiniti,QX70
+2015,Infiniti,QX80
+2016,Infiniti,Q50
+2016,Infiniti,Q70
+2016,Infiniti,QX50
+2016,Infiniti,QX60
+2016,Infiniti,QX70
+2016,Infiniti,QX80
+2017,Infiniti,Q50
+2017,Infiniti,Q60
+2017,Infiniti,Q70
+2017,Infiniti,QX30
+2017,Infiniti,QX50
+2017,Infiniti,QX60
+2017,Infiniti,QX70
+2017,Infiniti,QX80
+2018,Infiniti,Q50
+2018,Infiniti,Q60
+2018,Infiniti,Q70
+2018,Infiniti,QX30
+2018,Infiniti,QX60
+2018,Infiniti,QX80
+2019,Infiniti,Q50
+2019,Infiniti,Q60
+2019,Infiniti,Q70
+2019,Infiniti,QX30
+2019,Infiniti,QX50
+2019,Infiniti,QX60
+2019,Infiniti,QX80
+2020,Infiniti,Q50
+2020,Infiniti,Q60
+2020,Infiniti,QX50
+2020,Infiniti,QX60
+2020,Infiniti,QX80
+2021,Infiniti,Q50
+2021,Infiniti,Q60
+2021,Infiniti,QX50
+2021,Infiniti,QX80
+2022,Infiniti,Q50
+2022,Infiniti,Q60
+2022,Infiniti,QX55
+2022,Infiniti,QX60
+2022,Infiniti,QX80
+2023,Infiniti,Q50
+2023,Infiniti,QX50
+2023,Infiniti,QX55
+2023,Infiniti,QX60
+2023,Infiniti,QX80
+2024,Infiniti,Q50
+2024,Infiniti,QX50
+2024,Infiniti,QX55
+2024,Infiniti,QX60
+2024,Infiniti,QX80
+2012,Jaguar,XF
+2012,Jaguar,XJ
+2012,Jaguar,XK
+2013,Jaguar,XF
+2013,Jaguar,XJ
+2013,Jaguar,XK
+2014,Jaguar,XF
+2014,Jaguar,XJ
+2014,Jaguar,XK
+2015,Jaguar,XF
+2015,Jaguar,XJ
+2015,Jaguar,XK
+2016,Jaguar,XE
+2016,Jaguar,XF
+2016,Jaguar,XJ
+2017,Jaguar,XE
+2017,Jaguar,XF
+2017,Jaguar,XJ
+2018,Jaguar,XE
+2018,Jaguar,XF
+2018,Jaguar,XJ
+2019,Jaguar,XE
+2019,Jaguar,XF
+2019,Jaguar,XJ
+2020,Jaguar,XE
+2020,Jaguar,XF
+2021,Jaguar,XE
+2021,Jaguar,XF
+2022,Jaguar,XF
+2023,Jaguar,XE
+2023,Jaguar,XF
+2024,Jaguar,XE
+2024,Jaguar,XF
+2012,Jeep,Grand Cherokee
+2013,Jeep,Compass
+2013,Jeep,Grand Cherokee
+2013,Jeep,Patriot
+2014,Jeep,Cherokee
+2014,Jeep,Compass
+2014,Jeep,Grand Cherokee
+2014,Jeep,Patriot
+2015,Jeep,Cherokee
+2015,Jeep,Compass
+2015,Jeep,Grand Cherokee
+2015,Jeep,Patriot
+2015,Jeep,Renegade
+2016,Jeep,Cherokee
+2016,Jeep,Compass
+2016,Jeep,Grand Cherokee
+2016,Jeep,Patriot
+2016,Jeep,Renegade
+2017,Jeep,Cherokee
+2017,Jeep,Compass
+2017,Jeep,Grand Cherokee
+2017,Jeep,Patriot
+2017,Jeep,Renegade
+2018,Jeep,Cherokee
+2018,Jeep,Compass
+2018,Jeep,Grand Cherokee
+2018,Jeep,Renegade
+2018,Jeep,Wrangler
+2019,Jeep,Cherokee
+2019,Jeep,Compass
+2019,Jeep,Grand Cherokee
+2019,Jeep,Renegade
+2019,Jeep,Wrangler
+2020,Jeep,Cherokee
+2020,Jeep,Compass
+2020,Jeep,Gladiator
+2020,Jeep,Grand Cherokee
+2020,Jeep,Renegade
+2020,Jeep,Wrangler
+2021,Jeep,Cherokee
+2021,Jeep,Compass
+2021,Jeep,Gladiator
+2021,Jeep,Renegade
+2021,Jeep,Wrangler
+2022,Jeep,Cherokee
+2022,Jeep,Compass
+2022,Jeep,Gladiator
+2022,Jeep,Renegade
+2022,Jeep,Wagoneer
+2022,Jeep,Wrangler
+2023,Jeep,Cherokee
+2023,Jeep,Compass
+2023,Jeep,Gladiator
+2023,Jeep,Renegade
+2023,Jeep,Wagoneer
+2023,Jeep,Wrangler
+2024,Jeep,Compass
+2024,Jeep,Gladiator
+2024,Jeep,Grand Cherokee
+2024,Jeep,Wrangler
+2012,Kia,Optima
+2012,Kia,Rio
+2012,Kia,Sedona
+2012,Kia,Sorento
+2012,Kia,Soul
+2012,Kia,Sportage
+2013,Kia,Optima
+2013,Kia,Rio
+2013,Kia,Sedona
+2013,Kia,Sorento
+2013,Kia,Soul
+2013,Kia,Sportage
+2014,Kia,Cadenza
+2014,Kia,Forte
+2014,Kia,Optima
+2014,Kia,Rio
+2014,Kia,Sedona
+2014,Kia,Sorento
+2014,Kia,Soul
+2014,Kia,Sportage
+2015,Kia,Cadenza
+2015,Kia,Forte
+2015,Kia,K900
+2015,Kia,Optima
+2015,Kia,Rio
+2015,Kia,Sedona
+2015,Kia,Sorento
+2016,Kia,Soul
+2015,Kia,Sportage
+2016,Kia,Cadenza
+2016,Kia,Forte
+2016,Kia,K900
+2016,Kia,Optima
+2016,Kia,Rio
+2016,Kia,Sedona
+2016,Kia,Sorento
+2016,Kia,Sportage
+2017,Kia,Cadenza
+2017,Kia,Forte
+2017,Kia,K900
+2017,Kia,Niro
+2017,Kia,Optima
+2017,Kia,Rio
+2017,Kia,Sedona
+2017,Kia,Sorento
+2017,Kia,Soul
+2017,Kia,Sportage
+2018,Kia,Cadenza
+2018,Kia,Forte
+2018,Kia,K900
+2018,Kia,Niro
+2018,Kia,Optima
+2018,Kia,Rio
+2018,Kia,Sedona
+2018,Kia,Sorento
+2018,Kia,Soul
+2018,Kia,Sportage
+2018,Kia,Stinger
+2019,Kia,Sorento
+2019,Kia,Cadenza
+2019,Kia,Forte
+2019,Kia,K900
+2019,Kia,Niro
+2019,Kia,Optima
+2019,Kia,Rio
+2019,Kia,Sedona
+2019,Kia,Soul
+2019,Kia,Sportage
+2019,Kia,Stinger
+2020,Kia,Cadenza
+2020,Kia,Forte
+2020,Kia,K900
+2020,Kia,Niro
+2020,Kia,Optima
+2020,Kia,Rio
+2020,Kia,Sedona
+2020,Kia,Sorento
+2020,Kia,Soul
+2020,Kia,Sportage
+2020,Kia,Stinger
+2020,Kia,Telluride
+2021,Kia,Forte
+2021,Kia,Niro
+2021,Kia,Rio
+2021,Kia,Sedona
+2021,Kia,Seltos
+2021,Kia,Sorento
+2021,Kia,Soul
+2021,Kia,Sportage
+2021,Kia,Stinger
+2021,Kia,Telluride
+2022,Kia,Carnival
+2022,Kia,EV6
+2022,Kia,Forte
+2022,Kia,K5
+2022,Kia,Niro
+2022,Kia,Rio
+2022,Kia,Seltos
+2022,Kia,Sorento
+2022,Kia,Soul
+2022,Kia,Sportage
+2022,Kia,Stinger
+2022,Kia,Telluride
+2023,Kia,Carnival
+2023,Kia,EV6
+2023,Kia,Forte
+2023,Kia,K5
+2023,Kia,Niro
+2023,Kia,Rio
+2023,Kia,Seltos
+2023,Kia,Sorento
+2023,Kia,Soul
+2023,Kia,Sportage
+2023,Kia,Stinger
+2023,Kia,Telluride
+2024,Kia,Carnival
+2024,Kia,EV6
+2024,Kia,EV9
+2024,Kia,Forte
+2024,Kia,K5
+2024,Kia,Seltos
+2024,Kia,Soul
+2024,Kia,Telluride
+2012,Land Rover,Range Rover
+2013,Land Rover,LR2
+2013,Land Rover,LR4
+2013,Land Rover,Range Rover
+2014,Land Rover,LR2
+2014,Land Rover,LR4
+2014,Land Rover,Range Rover
+2015,Land Rover,Discovery Sport
+2015,Land Rover,LR2
+2015,Land Rover,LR4
+2015,Land Rover,Range Rover
+2016,Land Rover,Discovery Sport
+2016,Land Rover,LR4
+2016,Land Rover,Range Rover
+2017,Land Rover,Discovery Sport
+2017,Land Rover,Range Rover
+2018,Land Rover,Discovery Sport
+2018,Land Rover,Range Rover
+2018,Land Rover,Range Rover Velar
+2019,Land Rover,Discovery Sport
+2019,Land Rover,Range Rover
+2020,Land Rover,Defender
+2020,Land Rover,Discovery Sport
+2021,Land Rover,Defender
+2021,Land Rover,Discovery Sport
+2021,Land Rover,Range Rover
+2021,Land Rover,Range Rover Sport
+2022,Land Rover,Defender
+2022,Land Rover,Discovery Sport
+2022,Land Rover,Range Rover
+2022,Land Rover,Range Rover Sport
+2023,Land Rover,Defender
+2023,Land Rover,Discovery
+2023,Land Rover,Discovery Sport
+2023,Land Rover,New Range Rover
+2023,Land Rover,Range Rover Velar
+2024,Land Rover,Defender
+2024,Land Rover,Discovery
+2024,Land Rover,Discovery Sport
+2024,Land Rover,New Range Rover
+2024,Land Rover,Range Rover Velar
+2012,Lincoln,MKS
+2012,Lincoln,MKT
+2012,Lincoln,MKX
+2012,Lincoln,MKZ
+2012,Lincoln,Navigator
+2013,Lincoln,MKS
+2013,Lincoln,MKT
+2013,Lincoln,MKX
+2013,Lincoln,MKZ
+2013,Lincoln,Navigator
+2014,Lincoln,MKS
+2014,Lincoln,MKT
+2014,Lincoln,MKX
+2014,Lincoln,MKZ
+2014,Lincoln,Navigator
+2015,Lincoln,MKC
+2015,Lincoln,MKS
+2015,Lincoln,MKT
+2015,Lincoln,MKX
+2015,Lincoln,MKZ
+2015,Lincoln,Navigator
+2016,Lincoln,MKC
+2016,Lincoln,MKS
+2016,Lincoln,MKT
+2016,Lincoln,MKX
+2016,Lincoln,MKZ
+2016,Lincoln,Navigator
+2017,Lincoln,Continental
+2017,Lincoln,MKC
+2017,Lincoln,MKT
+2017,Lincoln,MKX
+2017,Lincoln,MKZ
+2017,Lincoln,Navigator
+2018,Lincoln,Continental
+2018,Lincoln,MKC
+2018,Lincoln,MKT
+2018,Lincoln,MKX
+2018,Lincoln,MKZ
+2018,Lincoln,Navigator
+2019,Lincoln,Continental
+2019,Lincoln,MKC
+2019,Lincoln,MKT
+2019,Lincoln,MKZ
+2019,Lincoln,Nautilus
+2019,Lincoln,Navigator
+2020,Lincoln,Aviator
+2020,Lincoln,Continental
+2020,Lincoln,Corsair
+2020,Lincoln,MKZ
+2020,Lincoln,Nautilus
+2020,Lincoln,Navigator
+2021,Lincoln,Aviator
+2021,Lincoln,Corsair
+2021,Lincoln,Nautilus
+2021,Lincoln,Navigator
+2022,Lincoln,Aviator
+2022,Lincoln,Corsair
+2022,Lincoln,Nautilus
+2022,Lincoln,Navigator
+2023,Lincoln,Aviator
+2023,Lincoln,Corsair
+2023,Lincoln,Nautilus
+2023,Lincoln,Navigator
+2024,Lincoln,Aviator
+2024,Lincoln,Corsair
+2024,Lincoln,Nautilus
+2024,Lincoln,Navigator
+2012,Mitsubishi,Eclipse
+2012,Mitsubishi,Lancer
+2013,Mitsubishi,Lancer
+2014,Mitsubishi,Lancer
+2014,Mitsubishi,Mirage
+2015,Mitsubishi,Lancer
+2015,Mitsubishi,Mirage
+2015,Mitsubishi,Outlander
+2016,Mitsubishi,Lancer
+2016,Mitsubishi,Outlander
+2017,Mitsubishi,Lancer
+2017,Mitsubishi,Mirage
+2017,Mitsubishi,Outlander
+2018,Mitsubishi,Eclipse Cross
+2018,Mitsubishi,Mirage
+2018,Mitsubishi,Outlander
+2019,Mitsubishi,Eclipse Cross
+2019,Mitsubishi,Mirage
+2019,Mitsubishi,Outlander
+2020,Mitsubishi,Eclipse Cross
+2020,Mitsubishi,Outlander
+2021,Mitsubishi,Eclipse Cross
+2021,Mitsubishi,Mirage
+2021,Mitsubishi,Outlander
+2022,Mitsubishi,Eclipse Cross
+2022,Mitsubishi,Mirage
+2022,Mitsubishi,Outlander
+2023,Mitsubishi,Eclipse Cross
+2023,Mitsubishi,Mirage
+2024,Mitsubishi,Eclipse Cross
+2024,Mitsubishi,Mirage
+2024,Mitsubishi,Outlander
+2018,Nissan,Altima
+2012,Nissan,370Z
+2012,Nissan,Altima
+2012,Nissan,Armada
+2012,Nissan,Cube
+2012,Nissan,Juke
+2012,Nissan,Leaf
+2012,Nissan,Maxima
+2012,Nissan,Murano
+2012,Nissan,NV
+2012,Nissan,Pathfinder
+2012,Nissan,Quest
+2012,Nissan,Rogue
+2012,Nissan,Titan
+2013,Nissan,370Z
+2013,Nissan,Altima
+2013,Nissan,Armada
+2013,Nissan,Cube
+2013,Nissan,Frontier
+2013,Nissan,Juke
+2013,Nissan,Leaf
+2013,Nissan,Maxima
+2013,Nissan,NV
+2013,Nissan,NV200
+2013,Nissan,Pathfinder
+2013,Nissan,Quest
+2013,Nissan,Rogue
+2013,Nissan,Titan
+2014,Nissan,370Z
+2014,Nissan,Altima
+2014,Nissan,Armada
+2014,Nissan,Cube
+2014,Nissan,Frontier
+2014,Nissan,Juke
+2014,Nissan,Leaf
+2014,Nissan,Maxima
+2014,Nissan,Murano
+2014,Nissan,NV
+2014,Nissan,NV200
+2014,Nissan,Pathfinder
+2014,Nissan,Quest
+2014,Nissan,Rogue
+2014,Nissan,Sentra
+2014,Nissan,Titan
+2014,Nissan,Versa
+2015,Nissan,370Z
+2015,Nissan,Altima
+2015,Nissan,Armada
+2015,Nissan,Juke
+2015,Nissan,Leaf
+2015,Nissan,Murano
+2015,Nissan,NV
+2015,Nissan,NV200
+2015,Nissan,Pathfinder
+2015,Nissan,Quest
+2015,Nissan,Rogue
+2015,Nissan,Sentra
+2015,Nissan,Titan
+2015,Nissan,Versa
+2016,Nissan,370Z
+2016,Nissan,Altima
+2016,Nissan,Frontier
+2016,Nissan,Juke
+2016,Nissan,Leaf
+2016,Nissan,Maxima
+2016,Nissan,Murano
+2016,Nissan,NV
+2016,Nissan,NV200
+2016,Nissan,Pathfinder
+2016,Nissan,Quest
+2016,Nissan,Rogue
+2016,Nissan,Sentra
+2016,Nissan,Titan
+2016,Nissan,Versa
+2017,Nissan,370Z
+2017,Nissan,Altima
+2017,Nissan,Armada
+2017,Nissan,Frontier
+2017,Nissan,Juke
+2017,Nissan,Leaf
+2017,Nissan,Maxima
+2017,Nissan,Murano
+2017,Nissan,NV
+2017,Nissan,NV200
+2017,Nissan,Pathfinder
+2017,Nissan,Quest
+2017,Nissan,Rogue
+2017,Nissan,Sentra
+2017,Nissan,Titan
+2017,Nissan,Versa
+2018,Nissan,370Z
+2018,Nissan,Armada
+2018,Nissan,Frontier
+2018,Nissan,Kicks
+2018,Nissan,Leaf
+2018,Nissan,Maxima
+2018,Nissan,Murano
+2018,Nissan,NV
+2018,Nissan,NV200
+2018,Nissan,Pathfinder
+2018,Nissan,Rogue
+2018,Nissan,Sentra
+2018,Nissan,Titan
+2018,Nissan,Versa
+2019,Nissan,370Z
+2019,Nissan,Altima
+2019,Nissan,Armada
+2019,Nissan,Frontier
+2019,Nissan,Kicks
+2019,Nissan,Leaf
+2019,Nissan,Maxima
+2019,Nissan,Murano
+2019,Nissan,NV
+2019,Nissan,NV200
+2019,Nissan,Pathfinder
+2019,Nissan,Rogue
+2019,Nissan,Sentra
+2019,Nissan,Titan
+2019,Nissan,Versa
+2020,Nissan,370Z
+2020,Nissan,Altima
+2020,Nissan,Armada
+2020,Nissan,Frontier
+2020,Nissan,Kicks
+2020,Nissan,Leaf
+2020,Nissan,Maxima
+2020,Nissan,Murano
+2020,Nissan,NV
+2020,Nissan,NV200
+2020,Nissan,Pathfinder
+2020,Nissan,Rogue
+2020,Nissan,Sentra
+2020,Nissan,Titan
+2020,Nissan,Versa
+2021,Nissan,Altima
+2021,Nissan,Armada
+2021,Nissan,Frontier
+2021,Nissan,Kicks
+2021,Nissan,Leaf
+2021,Nissan,Maxima
+2021,Nissan,Murano
+2021,Nissan,NV200
+2021,Nissan,Rogue
+2021,Nissan,Sentra
+2021,Nissan,Titan
+2021,Nissan,Versa
+2022,Nissan,Altima
+2022,Nissan,Armada
+2022,Nissan,Frontier
+2022,Nissan,Kicks
+2022,Nissan,Leaf
+2022,Nissan,Maxima
+2022,Nissan,Murano
+2022,Nissan,Pathfinder
+2022,Nissan,Rogue
+2022,Nissan,Sentra
+2022,Nissan,Titan
+2022,Nissan,Versa
+2023,Nissan,Altima
+2023,Nissan,Ariya
+2023,Nissan,Armada
+2023,Nissan,Frontier
+2023,Nissan,Kicks
+2023,Nissan,Leaf
+2023,Nissan,Maxima
+2023,Nissan,Murano
+2023,Nissan,Pathfinder
+2023,Nissan,Rogue
+2023,Nissan,Sentra
+2023,Nissan,Titan
+2023,Nissan,Versa
+2024,Nissan,Altima
+2024,Nissan,Armada
+2024,Nissan,Frontier
+2024,Nissan,Kicks
+2024,Nissan,Leaf
+2024,Nissan,Murano
+2024,Nissan,Pathfinder
+2024,Nissan,Rogue
+2024,Nissan,Sentra
+2024,Nissan,Titan
+2024,Nissan,Versa
+2012,Porsche,Cayenne
+2012,Porsche,Panamera
+2013,Porsche,Cayenne
+2013,Porsche,Panamera
+2014,Porsche,Cayenne
+2014,Porsche,Cayman
+2014,Porsche,Macan
+2014,Porsche,Panamera
+2015,Porsche,Cayenne
+2015,Porsche,Cayman
+2015,Porsche,Macan
+2015,Porsche,Panamera
+2016,Porsche,Cayenne
+2016,Porsche,Cayman
+2016,Porsche,Macan
+2016,Porsche,Panamera
+2017,Porsche,Cayenne
+2017,Porsche,Cayman
+2017,Porsche,Macan
+2017,Porsche,Panamera
+2018,Porsche,Cayenne
+2018,Porsche,Cayman
+2018,Porsche,Macan
+2018,Porsche,Panamera
+2019,Porsche,Cayenne
+2019,Porsche,Cayman
+2019,Porsche,Macan
+2019,Porsche,Panamera
+2020,Porsche,Cayenne
+2020,Porsche,Cayman
+2020,Porsche,Macan
+2020,Porsche,Panamera
+2020,Porsche,Taycan
+2021,Porsche,Cayenne
+2021,Porsche,Cayman
+2021,Porsche,Macan
+2021,Porsche,Panamera
+2021,Porsche,Taycan
+2022,Porsche,Cayman
+2022,Porsche,Macan
+2022,Porsche,Panamera
+2022,Porsche,Taycan
+2023,Porsche,Cayman
+2023,Porsche,Macan
+2023,Porsche,Panamera
+2023,Porsche,Taycan
+2024,Porsche,Cayman
+2024,Porsche,Macan
+2024,Porsche,Panamera
+2024,Porsche,Taycan
+2012,Ram,1500
+2012,Ram,2500
+2012,Ram,3500
+2013,Ram,1500
+2013,Ram,2500
+2013,Ram,3500
+2014,Ram,1500
+2014,Ram,2500
+2014,Ram,3500
+2015,Ram,1500
+2015,Ram,2500
+2015,Ram,3500
+2016,Ram,1500
+2016,Ram,2500
+2016,Ram,3500
+2017,Ram,1500
+2017,Ram,2500
+2017,Ram,3500
+2018,Ram,1500
+2018,Ram,2500
+2018,Ram,3500
+2019,Ram,1500
+2019,Ram,2500
+2019,Ram,3500
+2020,Ram,1500
+2020,Ram,2500
+2020,Ram,3500
+2021,Ram,1500
+2021,Ram,2500
+2021,Ram,3500
+2022,Ram,1500
+2022,Ram,2500
+2022,Ram,3500
+2022,Ram,Promaster City
+2023,Ram,1500
+2023,Ram,2500
+2023,Ram,3500
+2023,Ram,4500
+2023,Ram,5500
+2024,Ram,1500
+2024,Ram,2500
+2024,Ram,3500
+2024,Ram,4500
+2024,Ram,5500
+2012,Subaru,Forester
+2012,Subaru,Legacy
+2012,Subaru,Outback
+2013,Subaru,Forester
+2013,Subaru,Impreza
+2013,Subaru,Legacy
+2013,Subaru,Outback
+2013,Subaru,XV Crosstrek
+2014,Subaru,Forester
+2014,Subaru,Impreza
+2014,Subaru,Legacy
+2014,Subaru,Outback
+2014,Subaru,XV Crosstrek
+2015,Subaru,Forester
+2015,Subaru,Impreza
+2015,Subaru,Legacy
+2015,Subaru,Outback
+2015,Subaru,WRX
+2015,Subaru,XV Crosstrek
+2016,Subaru,BRZ
+2016,Subaru,Crosstrek
+2016,Subaru,Forester
+2016,Subaru,Impreza
+2016,Subaru,Legacy
+2016,Subaru,Outback
+2016,Subaru,WRX
+2017,Subaru,BRZ
+2017,Subaru,Crosstrek
+2017,Subaru,Forester
+2017,Subaru,Impreza
+2017,Subaru,Legacy
+2017,Subaru,Outback
+2017,Subaru,WRX
+2018,Subaru,BRZ
+2018,Subaru,Crosstrek
+2018,Subaru,Forester
+2018,Subaru,Impreza
+2018,Subaru,Legacy
+2018,Subaru,Outback
+2018,Subaru,WRX
+2019,Subaru,Ascent
+2019,Subaru,BRZ
+2019,Subaru,Crosstrek
+2019,Subaru,Forester
+2019,Subaru,Impreza
+2019,Subaru,Legacy
+2019,Subaru,Outback
+2019,Subaru,WRX
+2020,Subaru,Ascent
+2020,Subaru,BRZ
+2020,Subaru,Crosstrek
+2020,Subaru,Forester
+2020,Subaru,Impreza
+2020,Subaru,Legacy
+2020,Subaru,Outback
+2020,Subaru,WRX
+2021,Subaru,Ascent
+2021,Subaru,Crosstrek
+2021,Subaru,Forester
+2021,Subaru,Impreza
+2021,Subaru,Legacy
+2021,Subaru,Outback
+2021,Subaru,WRX
+2022,Subaru,Ascent
+2022,Subaru,BRZ
+2022,Subaru,Crosstrek
+2022,Subaru,Forester
+2022,Subaru,Impreza
+2022,Subaru,Legacy
+2022,Subaru,Outback
+2022,Subaru,WRX
+2023,Subaru,Ascent
+2023,Subaru,BRZ
+2023,Subaru,Crosstrek
+2023,Subaru,Forester
+2023,Subaru,Impreza
+2023,Subaru,Legacy
+2023,Subaru,Outback
+2023,Subaru,Solterra
+2023,Subaru,WRX
+2024,Subaru,Ascent
+2024,Subaru,BRZ
+2024,Subaru,Crosstrek
+2024,Subaru,Forester
+2024,Subaru,Impreza
+2024,Subaru,Legacy
+2024,Subaru,Outback
+2024,Subaru,Solterra
+2024,Subaru,WRX
+2023,Tesla,Roadster
+2012,Toyota,Avalon
+2012,Toyota,Camry
+2012,Toyota,FJ Cruiser
+2012,Toyota,Highlander
+2012,Toyota,Prius
+2012,Toyota,Sequoia
+2012,Toyota,Sienna
+2012,Toyota,Tacoma
+2012,Toyota,Tundra
+2012,Toyota,Venza
+2013,Toyota,Avalon
+2013,Toyota,Camry
+2013,Toyota,FJ Cruiser
+2013,Toyota,Highlander
+2013,Toyota,Land Cruiser
+2013,Toyota,Prius
+2013,Toyota,RAV4
+2013,Toyota,Sequoia
+2013,Toyota,Sienna
+2013,Toyota,Tacoma
+2013,Toyota,Tundra
+2013,Toyota,Venza
+2014,Toyota,Avalon
+2014,Toyota,Camry
+2014,Toyota,Corolla
+2014,Toyota,FJ Cruiser
+2014,Toyota,Highlander
+2014,Toyota,Land Cruiser
+2014,Toyota,Prius
+2014,Toyota,RAV4
+2014,Toyota,Sequoia
+2014,Toyota,Sienna
+2014,Toyota,Tacoma
+2014,Toyota,Tundra
+2014,Toyota,Venza
+2015,Toyota,Avalon
+2015,Toyota,Camry
+2015,Toyota,Corolla
+2015,Toyota,Highlander
+2015,Toyota,Land Cruiser
+2015,Toyota,Prius
+2015,Toyota,RAV4
+2015,Toyota,Sequoia
+2015,Toyota,Sienna
+2015,Toyota,Tacoma
+2015,Toyota,Tundra
+2015,Toyota,Venza
+2016,Toyota,Avalon
+2016,Toyota,Camry
+2016,Toyota,Corolla
+2016,Toyota,Highlander
+2016,Toyota,Land Cruiser
+2016,Toyota,Mirai
+2016,Toyota,Prius
+2016,Toyota,RAV4
+2016,Toyota,Sequoia
+2016,Toyota,Sienna
+2016,Toyota,Tacoma
+2016,Toyota,Tundra
+2016,Toyota,Venza
+2017,Toyota,86
+2017,Toyota,Avalon
+2017,Toyota,Camry
+2017,Toyota,Corolla
+2017,Toyota,Highlander
+2017,Toyota,Land Cruiser
+2017,Toyota,Mirai
+2017,Toyota,Prius
+2017,Toyota,RAV4
+2017,Toyota,Sequoia
+2017,Toyota,Sienna
+2017,Toyota,Tacoma
+2017,Toyota,Tundra
+2017,Toyota,Yaris
+2018,Toyota,86
+2018,Toyota,Avalon
+2018,Toyota,Camry
+2018,Toyota,Corolla
+2018,Toyota,Highlander
+2018,Toyota,Land Cruiser
+2018,Toyota,Mirai
+2018,Toyota,Prius
+2018,Toyota,RAV4
+2018,Toyota,Sequoia
+2018,Toyota,Sienna
+2018,Toyota,Tacoma
+2018,Toyota,Tundra
+2018,Toyota,Yaris
+2019,Toyota,86
+2019,Toyota,Avalon
+2019,Toyota,Camry
+2019,Toyota,Corolla
+2019,Toyota,Highlander
+2019,Toyota,Land Cruiser
+2019,Toyota,Mirai
+2019,Toyota,Prius
+2019,Toyota,RAV4
+2019,Toyota,Sequoia
+2019,Toyota,Sienna
+2019,Toyota,Tacoma
+2019,Toyota,Tundra
+2019,Toyota,Yaris
+2020,Toyota,86
+2020,Toyota,Avalon
+2020,Toyota,Camry
+2020,Toyota,Corolla
+2020,Toyota,Highlander
+2020,Toyota,Land Cruiser
+2020,Toyota,Mirai
+2020,Toyota,Prius
+2020,Toyota,RAV4
+2020,Toyota,Sequoia
+2020,Toyota,Sienna
+2020,Toyota,Supra
+2020,Toyota,Tacoma
+2020,Toyota,Tundra
+2021,Toyota,Avalon
+2021,Toyota,Camry
+2021,Toyota,Corolla
+2021,Toyota,Highlander
+2021,Toyota,Land Cruiser
+2021,Toyota,Mirai
+2021,Toyota,Prius
+2021,Toyota,RAV4
+2021,Toyota,Sequoia
+2021,Toyota,Sienna
+2021,Toyota,Supra
+2021,Toyota,Tacoma
+2021,Toyota,Tundra
+2022,Toyota,Avalon
+2022,Toyota,Camry
+2022,Toyota,Corolla
+2022,Toyota,Corolla Cross
+2022,Toyota,Highlander
+2022,Toyota,Mirai
+2022,Toyota,Prius
+2022,Toyota,RAV4
+2022,Toyota,Sequoia
+2022,Toyota,Supra
+2022,Toyota,Tacoma
+2023,Toyota,86
+2023,Toyota,bZ4X
+2023,Toyota,Camry
+2023,Toyota,Corolla
+2023,Toyota,Corolla Cross
+2023,Toyota,Crown
+2023,Toyota,Highlander
+2023,Toyota,Mirai
+2023,Toyota,Prius
+2023,Toyota,Prius Prime
+2023,Toyota,RAV4
+2023,Toyota,RAV4 Prime
+2023,Toyota,Supra
+2023,Toyota,Tacoma
+2023,Toyota,Tundra
+2023,Toyota,Yaris
+2024,Toyota,bZ4X
+2024,Toyota,Camry
+2024,Toyota,Corolla
+2024,Toyota,Corolla Cross
+2024,Toyota,Crown
+2024,Toyota,Highlander
+2024,Toyota,Prius
+2024,Toyota,Prius Prime
+2024,Toyota,RAV4
+2024,Toyota,RAV4 Prime
+2024,Toyota,Supra
+2024,Toyota,Tundra
+2012,Volkswagen,Beetle
+2012,Volkswagen,CC
+2012,Volkswagen,Eos
+2012,Volkswagen,Golf
+2012,Volkswagen,Jetta
+2012,Volkswagen,Passat
+2012,Volkswagen,Tiguan
+2012,Volkswagen,Touareg
+2013,Volkswagen,Beetle
+2013,Volkswagen,CC
+2013,Volkswagen,Eos
+2013,Volkswagen,Golf
+2013,Volkswagen,Jetta
+2013,Volkswagen,Passat
+2013,Volkswagen,Tiguan
+2013,Volkswagen,Touareg
+2014,Volkswagen,Beetle
+2014,Volkswagen,CC
+2014,Volkswagen,Eos
+2014,Volkswagen,Golf
+2014,Volkswagen,Jetta
+2014,Volkswagen,Passat
+2014,Volkswagen,Tiguan
+2014,Volkswagen,Touareg
+2015,Volkswagen,Beetle
+2015,Volkswagen,CC
+2015,Volkswagen,Eos
+2015,Volkswagen,Golf
+2015,Volkswagen,Jetta
+2015,Volkswagen,Passat
+2015,Volkswagen,Tiguan
+2015,Volkswagen,Touareg
+2016,Volkswagen,Beetle
+2016,Volkswagen,CC
+2016,Volkswagen,Eos
+2016,Volkswagen,Golf
+2016,Volkswagen,Jetta
+2016,Volkswagen,Passat
+2016,Volkswagen,Tiguan
+2016,Volkswagen,Touareg
+2017,Volkswagen,Beetle
+2017,Volkswagen,CC
+2017,Volkswagen,Golf
+2017,Volkswagen,Jetta
+2017,Volkswagen,Touareg
+2017,Volkswagen,Passat
+2017,Volkswagen,Tiguan
+2018,Volkswagen,Arteon
+2018,Volkswagen,Atlas
+2018,Volkswagen,Beetle
+2018,Volkswagen,Golf
+2018,Volkswagen,Jetta
+2018,Volkswagen,Passat
+2018,Volkswagen,Tiguan
+2019,Volkswagen,Arteon
+2019,Volkswagen,Atlas
+2019,Volkswagen,Beetle
+2019,Volkswagen,Golf
+2019,Volkswagen,Jetta
+2019,Volkswagen,Passat
+2019,Volkswagen,Tiguan
+2020,Volkswagen,Arteon
+2020,Volkswagen,Atlas
+2020,Volkswagen,Atlas Cross Sport
+2020,Volkswagen,Golf
+2020,Volkswagen,Jetta
+2020,Volkswagen,Passat
+2020,Volkswagen,Tiguan
+2021,Volkswagen,Arteon
+2021,Volkswagen,Atlas
+2021,Volkswagen,Atlas Cross Sport
+2021,Volkswagen,Golf
+2021,Volkswagen,ID.4
+2021,Volkswagen,Jetta
+2021,Volkswagen,Passat
+2021,Volkswagen,Tiguan
+2022,Volkswagen,Arteon
+2022,Volkswagen,Atlas
+2022,Volkswagen,Atlas Cross Sport
+2022,Volkswagen,Golf
+2022,Volkswagen,ID.4
+2022,Volkswagen,Jetta
+2022,Volkswagen,Passat
+2022,Volkswagen,Taos
+2022,Volkswagen,Tiguan
+2023,Volkswagen,Arteon
+2023,Volkswagen,Atlas
+2023,Volkswagen,Atlas Cross Sport
+2023,Volkswagen,Golf
+2023,Volkswagen,ID.4
+2023,Volkswagen,Jetta
+2023,Volkswagen,Taos
+2023,Volkswagen,Tiguan
+2024,Volkswagen,Atlas
+2024,Volkswagen,Atlas Cross Sport
+2024,Volkswagen,Golf
+2024,Volkswagen,ID.4
+2017,Alfa Romeo,Giulia
+2018,Alfa Romeo,Giulia
+2019,Alfa Romeo,Giulia
+2020,Alfa Romeo,Giulia
+2021,Alfa Romeo,Giulia
+2022,Alfa Romeo,Giulia
+2023,Alfa Romeo,Giulia
+2024,Alfa Romeo,Giulia
+2019,Audi,E-Tron
+2019,Audi,RS 8
+2020,Audi,E-Tron
+2021,Audi,E-Tron
+2022,Audi,E-Tron
+2023,Audi,E-Tron
+2024,Audi,E-Tron
+2023,Brightdrop,Zevo 600
+2012,Chevrolet,Captiva
+2012,Chevrolet,Silverado 1500
+2012,Chevrolet,Silverado 2500
+2012,Chevrolet,Silverado 3500
+2013,Chevrolet,Captiva
+2013,Chevrolet,Silverado 1500
+2013,Chevrolet,Silverado 2500
+2013,Chevrolet,Silverado 3500
+2014,Chevrolet,Captiva
+2014,Chevrolet,Silverado 1500
+2014,Chevrolet,Silverado 2500
+2014,Chevrolet,Silverado 3500
+2015,Chevrolet,Captiva
+2015,Chevrolet,Silverado 1500
+2015,Chevrolet,Silverado 2500
+2015,Chevrolet,Silverado 3500
+2016,Chevrolet,Captiva
+2016,Chevrolet,Silverado 1500
+2016,Chevrolet,Silverado 2500
+2016,Chevrolet,Silverado 3500
+2017,Chevrolet,Captiva
+2017,Chevrolet,Silverado 1500
+2017,Chevrolet,Silverado 2500
+2017,Chevrolet,Silverado 3500
+2018,Chevrolet,Captiva
+2018,Chevrolet,Silverado 1500
+2018,Chevrolet,Silverado 2500
+2018,Chevrolet,Silverado 3500
+2019,Chevrolet,Bolt
+2019,Chevrolet,Silverado 1500
+2019,Chevrolet,Silverado 2500
+2019,Chevrolet,Silverado 3500
+2020,Chevrolet,Silverado 1500
+2020,Chevrolet,Silverado 2500
+2020,Chevrolet,Silverado 3500
+2021,Chevrolet,Silverado 1500
+2021,Chevrolet,Silverado 2500
+2021,Chevrolet,Silverado 3500
+2022,Chevrolet,Captiva
+2022,Chevrolet,Onix Plus
+2022,Chevrolet,Silverado 1500
+2022,Chevrolet,Silverado 2500
+2022,Chevrolet,Silverado 3500
+2023,Chevrolet,Captiva
+2023,Chevrolet,Silverado 1500
+2023,Chevrolet,Silverado 2500HD
+2023,Chevrolet,Silverado 3500HD
+2024,Chevrolet,Captiva
+2024,Chevrolet,Silverado 1500
+2024,Chevrolet,Silverado 2500HD
+2024,Chevrolet,Silverado 3500HD
+2024,Dodge,Durango SRT
+2012,Ford,E-150
+2012,Ford,E-250
+2012,Ford,E-350
+2012,Ford,F-150
+2012,Ford,F-250
+2012,Ford,F-350
+2013,Ford,C-Max
+2013,Ford,E-250
+2013,Ford,F-150
+2013,Ford,F-250
+2013,Ford,F-350
+2014,Ford,C-Max
+2014,Ford,E-150
+2014,Ford,E-250
+2014,Ford,E-350
+2014,Ford,F-150
+2014,Ford,F-250
+2014,Ford,F-350
+2014,Ford,F-450
+2015,Ford,C-Max
+2015,Ford,F-150
+2015,Ford,F-250
+2015,Ford,F-350
+2015,Ford,F-450
+2016,Ford,C-Max
+2016,Ford,F-150
+2016,Ford,F-250
+2016,Ford,F-350
+2016,Ford,F-450
+2017,Ford,C-Max
+2017,Ford,F-150
+2017,Ford,F-250
+2017,Ford,F-350
+2017,Ford,F-450
+2018,Ford,C-Max
+2018,Ford,E-350
+2018,Ford,F-150
+2018,Ford,F-250
+2018,Ford,F-350
+2018,Ford,F-450
+2019,Ford,F-150
+2019,Ford,F-250
+2019,Ford,F-350
+2019,Ford,F-450
+2020,Ford,F-150
+2020,Ford,F-250
+2020,Ford,F-350
+2020,Ford,F-450
+2021,Ford,F-150
+2021,Ford,F-250
+2021,Ford,F-350
+2021,Ford,F-450
+2022,Ford,F-150
+2022,Ford,F-250
+2022,Ford,F-350
+2022,Ford,F-450
+2023,Ford,E-350
+2023,Ford,E-450
+2023,Ford,F-150
+2023,Ford,F-250
+2023,Ford,F-350
+2023,Ford,F-450
+2023,Ford,F-550
+2023,Ford,F-600
+2024,Ford,E-350
+2024,Ford,E-450
+2024,Ford,F-250
+2024,Ford,F-350
+2024,Ford,F-450
+2024,Ford,F-550
+2024,Ford,F-600
+2012,Honda,CR-V
+2013,Honda,CR-V
+2013,Honda,CR-Z
+2014,Honda,CR-V
+2014,Honda,CR-Z
+2015,Honda,CR-V
+2015,Honda,CR-Z
+2016,Honda,CR-V
+2016,Honda,CR-Z
+2016,Honda,HR-V
+2017,Honda,CR-V
+2017,Honda,HR-V
+2018,Honda,Clarity Plug-In Hybrid
+2018,Honda,CR-V
+2018,Honda,HR-V
+2019,Honda,Clarity Plug-In Hybrid
+2019,Honda,CR-V
+2019,Honda,HR-V
+2020,Honda,Clarity Plug-In Hybrid
+2020,Honda,CR-V
+2020,Honda,HR-V
+2021,Honda,Clarity Plug-In Hybrid
+2021,Honda,CR-V
+2021,Honda,HR-V
+2022,Honda,CR-V
+2022,Honda,HR-V
+2023,Honda,Accord Hybrid
+2023,Honda,CR-V
+2023,Honda,HR-V
+2024,Honda,Accord Hybrid
+2024,Honda,CR-V
+2024,Honda,HR-V
+2023,Hyundai,Elantra HEV
+2023,Hyundai,Sonata HEV
+2023,Hyundai,Tucson HEV
+2023,Hyundai,Tucson PHEV
+2024,Hyundai,Sonata HEV
+2012,Infiniti,FX
+2013,Infiniti,FX
+2013,Infiniti,JX
+2013,Infiniti,QX
+2014,Jaguar,F-Type
+2015,Jaguar,F-Type
+2016,Jaguar,F-Type
+2017,Jaguar,F-Pace
+2017,Jaguar,F-Type
+2018,Jaguar,E-Pace
+2018,Jaguar,F-Pace
+2018,Jaguar,F-Type
+2019,Jaguar,E-Pace
+2019,Jaguar,F-Pace
+2019,Jaguar,F-Type
+2019,Jaguar,I-Pace
+2020,Jaguar,E-Pace
+2020,Jaguar,F-Pace
+2020,Jaguar,F-Type
+2020,Jaguar,I-Pace
+2021,Jaguar,E-Pace
+2021,Jaguar,F-Pace
+2021,Jaguar,F-Type
+2021,Jaguar,I-Pace
+2022,Jaguar,E-Pace
+2022,Jaguar,F-Type
+2022,Jaguar,I-Pace
+2023,Jaguar,E-Pace
+2023,Jaguar,F-Pace
+2023,Jaguar,F-Type
+2023,Jaguar,I-Pace
+2024,Jaguar,E-Pace
+2024,Jaguar,F-Pace
+2024,Jaguar,F-Type
+2024,Jaguar,I-Pace
+2019,Jeep,Grand Commander
+2020,Jeep,Grand Commander
+2024,Kia,Niro EV
+2024,Kia,Niro HEV
+2024,Kia,Niro PHEV
+2024,Kia,Sorento HEV
+2024,Kia,Sorento PHEV
+2024,Kia,Sportage HEV
+2024,Kia,Sportage NQ5
+2024,Kia,Sportage NQ5A
+2024,Kia,Sportage PHEV
+2012,Lexus,IS F
+2013,Lexus,IS F
+2014,Lexus,IS F
+2015,Lexus,RC F
+2016,Lexus,GS F
+2016,Lexus,RC F
+2017,Lexus,GS F
+2017,Lexus,RC F
+2018,Lexus,GS F
+2018,Lexus,RC F
+2019,Lexus,GS F
+2019,Lexus,RC F
+2020,Lexus,GS F
+2020,Lexus,RC F
+2021,Lexus,RC F
+2022,Lexus,RC F
+2012,Mazda,CX-7
+2012,Mazda,CX-9
+2013,Mazda,CX-5
+2013,Mazda,CX-9
+2014,Mazda,CX-5
+2014,Mazda,CX-9
+2015,Mazda,CX-5
+2015,Mazda,CX-9
+2016,Mazda,CX-3
+2016,Mazda,CX-5
+2016,Mazda,CX-9
+2016,Mazda,MX-5
+2017,Mazda,CX-3
+2017,Mazda,CX-5
+2017,Mazda,CX-9
+2017,Mazda,MX-5
+2018,Mazda,CX-3
+2018,Mazda,CX-5
+2018,Mazda,CX-9
+2018,Mazda,MX-5
+2019,Mazda,CX-3
+2019,Mazda,CX-5
+2019,Mazda,CX-9
+2019,Mazda,MX-5
+2020,Mazda,CX-3
+2020,Mazda,CX-30
+2020,Mazda,CX-5
+2020,Mazda,CX-9
+2020,Mazda,MX-5
+2021,Mazda,CX-3
+2021,Mazda,CX-30
+2021,Mazda,CX-5
+2021,Mazda,CX-9
+2021,Mazda,MX-5
+2022,Mazda,CX-3
+2022,Mazda,CX-30
+2022,Mazda,CX-5
+2022,Mazda,CX-9
+2022,Mazda,MX-30
+2022,Mazda,MX-5
+2023,Mazda,CX-3
+2023,Mazda,CX-30
+2023,Mazda,CX-5
+2023,Mazda,CX-50
+2023,Mazda,CX-9
+2023,Mazda,MX-30
+2023,Mazda,MX-5
+2024,Mazda,CX-3
+2024,Mazda,CX-30
+2024,Mazda,CX-5
+2024,Mazda,CX-50
+2024,Mazda,CX-90
+2024,Mazda,MX-5
+2014,Nissan,GT-R
+2015,Nissan,GT-R
+2016,Nissan,GT-R
+2017,Nissan,GT-R
+2018,Nissan,GT-R
+2019,Nissan,GT-R
+2020,Nissan,GT-R
+2021,Nissan,GT-R
+2023,Nissan,GT-R
+2024,Nissan,GT-R
+2013,Porsche,Cayman-Boxster
+2022,Porsche,Cayenne
+2023,Porsche,Cayenne
+2024,Porsche,Cayenne
+2014,Ram,Promaster
+2015,Ram,Promaster
+2016,Ram,Promaster
+2017,Ram,Promaster
+2018,Ram,Promaster
+2019,Ram,Promaster
+2020,Ram,Promaster
+2021,Ram,Promaster
+2022,Ram,Promaster
+2023,Ram,Promaster
+2024,Ram,Promaster
+2012,Subaru,Tribeca
+2013,Subaru,Tribeca
+2014,Subaru,Tribeca
+2015,Subaru,WRX STI
+2016,Subaru,WRX STI
+2017,Subaru,WRX STI
+2018,Subaru,WRX STI
+2019,Subaru,WRX STI
+2020,Subaru,WRX STI
+2021,Subaru,WRX STI
+2022,Subaru,Crosstrek Hybrid
+2012,Toyota,4Runner
+2012,Toyota,Avanza
+2013,Toyota,4Runner
+2014,Toyota,4Runner
+2015,Toyota,4Runner
+2016,Toyota,4Runner
+2017,Toyota,4Runner
+2018,Toyota,4Runner
+2018,Toyota,CH-R
+2019,Toyota,4Runner
+2019,Toyota,CH-R
+2020,Toyota,4Runner
+2020,Toyota,CH-R
+2021,Toyota,4Runner
+2021,Toyota,CH-R
+2021,Toyota,Sienna HV
+2021,Toyota,Venza HV
+2022,Toyota,4Runner
+2022,Toyota,CH-R
+2022,Toyota,Camry HV
+2022,Toyota,Corolla HV
+2022,Toyota,Highlander HV
+2022,Toyota,Sienna HV
+2022,Toyota,Venza HV
+2023,Toyota,4Runner
+2023,Toyota,Camry HV
+2023,Toyota,Corolla GR
+2023,Toyota,Corolla Hatchback
+2023,Toyota,Highlander HV
+2023,Toyota,RAV4 HV
+2023,Toyota,Sequoia HV
+2023,Toyota,Sienna HV
+2023,Toyota,Tundra HV
+2023,Toyota,Venza HV
+2024,Toyota,4Runner
+2024,Toyota,Camry HV
+2024,Toyota,Corolla Cross HV
+2024,Toyota,Corolla GR
+2024,Toyota,Corolla Hatchback
+2024,Toyota,Corolla HV
+2024,Toyota,Highlander HV
+2024,Toyota,RAV4 HV
+2024,Toyota,Sequoia HV
+2024,Toyota,Sienna HV
+2024,Toyota,Tundra HV
+2024,Toyota,Venza HV
+2019,Audi,RS8
+2020,Audi,RS8
+2021,Audi,RS8
+2022,Audi,RS3
+2022,Audi,RS8
+2023,Audi,SQ3
+2024,Audi,RS6
+2024,Audi,SQ3
+2012,Bmw,225i
+2024,Brightdrop,Zevo400
+2024,Brightdrop,Zevo600
+2017,Chevrolet,Express 2500
+2019,Chevrolet,Cavailer
+2023,Chevrolet,Cheyenne
+2023,Chevrolet,Silverado 4500HD
+2023,Chevrolet,Silverado 5500HD
+2023,Chevrolet,Silverado 6500HD
+2021,Dodge,Challenger SRT
+2021,Dodge,Charger SRT
+2021,Dodge,Durango SRT
+2022,Dodge,Challenger SRT
+2022,Dodge,Charger SRT
+2022,Dodge,Durango SRT
+2023,Dodge,Challenger SRT
+2023,Dodge,Charger SRT
+2023,Dodge,Durango SRT
+2017,Ford,E-350
+2021,Ford,Mustang Mach-E
+2022,Ford,E-350
+2022,Ford,E-450
+2022,Ford,EcoSport
+2022,Ford,F-550
+2023,Ford,Mustang Mach-E
+2024,Ford,F-250 Super Duty
+2024,Ford,F-350 Super Duty
+2024,Ford,F-450 Super Duty
+2024,Ford,F-550 Super Duty
+2024,Ford,F-600 Super Duty
+2012,GMC,Acadia
+2012,GMC,Savana
+2012,GMC,Sierra 1500
+2012,GMC,Sierra 2500
+2012,GMC,Sierra 3500
+2012,GMC,Terrain
+2012,GMC,Yukon
+2013,GMC,Acadia
+2013,GMC,Savana
+2013,GMC,Sierra 1500
+2013,GMC,Sierra 2500
+2013,GMC,Sierra 3500
+2013,GMC,Terrain
+2013,GMC,Yukon
+2014,GMC,Acadia
+2014,GMC,Savana
+2014,GMC,Sierra 1500
+2014,GMC,Sierra 2500
+2014,GMC,Sierra 3500
+2014,GMC,Terrain
+2014,GMC,Yukon
+2015,GMC,Acadia
+2015,GMC,Canyon
+2015,GMC,Savana
+2015,GMC,Sierra 1500
+2015,GMC,Sierra 2500
+2015,GMC,Sierra 3500
+2015,GMC,Terrain
+2015,GMC,Yukon
+2016,GMC,Acadia
+2016,GMC,Canyon
+2016,GMC,Savana
+2016,GMC,Sierra 1500
+2016,GMC,Sierra 2500
+2016,GMC,Sierra 3500
+2016,GMC,Terrain
+2016,GMC,Yukon
+2017,GMC,Acadia
+2017,GMC,Canyon
+2017,GMC,Savana
+2017,GMC,Sierra 1500
+2017,GMC,Sierra 2500
+2017,GMC,Sierra 3500
+2017,GMC,Terrain
+2017,GMC,Yukon
+2018,GMC,Acadia
+2018,GMC,Canyon
+2018,GMC,Savana
+2018,GMC,Sierra 1500
+2018,GMC,Sierra 2500
+2018,GMC,Sierra 3500
+2018,GMC,Terrain
+2018,GMC,Yukon
+2019,GMC,Acadia
+2019,GMC,Canyon
+2019,GMC,Savana
+2019,GMC,Sierra 1500
+2019,GMC,Sierra 2500
+2019,GMC,Sierra 3500
+2019,GMC,Terrain
+2019,GMC,Yukon
+2020,GMC,Acadia
+2020,GMC,Canyon
+2020,GMC,Savana
+2020,GMC,Sierra 1500
+2020,GMC,Sierra 2500 2WD
+2020,GMC,Sierra 2500 4WD
+2020,GMC,Sierra 3500 2WD
+2020,GMC,Sierra 3500 4WD
+2020,GMC,Terrain
+2020,GMC,Yukon
+2021,GMC,Acadia
+2021,GMC,Canyon
+2021,GMC,Savana
+2021,GMC,Sierra 1500
+2021,GMC,Sierra 2500 2WD
+2021,GMC,Sierra 2500 4WD
+2021,GMC,Sierra 3500 2WD
+2021,GMC,Sierra 3500 4WD
+2021,GMC,Terrain
+2021,GMC,Yukon
+2021,GMC,Yukon XL
+2022,GMC,Acadia
+2022,GMC,Canyon
+2022,GMC,Sierra 1500
+2022,GMC,Sierra 2500 2WD
+2022,GMC,Sierra 2500 4WD
+2022,GMC,Sierra 3500 2WD
+2022,GMC,Sierra 3500 4WD
+2022,GMC,Terrain
+2022,GMC,Yukon
+2022,GMC,Yukon XL
+2023,GMC,Acadia
+2023,GMC,Sierra 1500
+2023,GMC,Sierra 2500
+2023,GMC,Sierra 3500
+2023,GMC,Terrain
+2023,GMC,Yukon
+2023,GMC,Yukon XL
+2024,GMC,Canyon 2WD
+2024,GMC,Canyon 4WD
+2024,GMC,Hummer EV Pickup
+2024,GMC,Hummer EV Suv
+2024,GMC,Savana
+2024,GMC,Sierra 1500 2WD
+2024,GMC,Sierra 1500 4WD
+2024,GMC,Sierra 2500 2WD
+2024,GMC,Sierra 2500 4WD
+2024,GMC,Sierra 3500 2WD
+2024,GMC,Sierra 3500 4WD
+2024,GMC,Terrain
+2024,GMC,Yukon 2WD
+2024,GMC,Yukon 4WD
+2024,GMC,Yukon XL 2WD
+2024,GMC,Yukon XL 4WD
+2022,Honda,Accord Hybrid
+2012,Hyundai,Genesis
+2012,Hyundai,Veloster
+2014,Hyundai,Santa Fe
+2021,Hyundai,Elantra
+2023,Hyundai,Tuscon
+2024,Hyundai,Elantra CN7
+2024,Hyundai,Elantra Hybrid HEV
+2024,Hyundai,Kona SX2
+2024,Hyundai,Tuscon NX4
+2022,Jaguar,F-Pace
+2023,Land Rover,Range Rover Evoque
+2023,Land Rover,Range Rover Sport
+2024,Land Rover,Range Rover Evoque
+2024,Land Rover,Range Rover Sport
+2012,Lexus,IS F
+2023,Lexus,RC F
+2024,Lexus,RC F
+2024,Mazda,CX-5
+2024,Mazda,MX-30
+2016,Mini,F54 Clubman
+2016,Mini,F57 Convertible
+2017,Mini,F54 Clubman
+2017,Mini,F57 Convertible
+2017,Mini,F60 Countryman
+2018,Mini,F54 Clubman
+2018,Mini,F57 Convertible
+2018,Mini,F60 Countryman
+2019,Mini,F54 Clubman
+2019,Mini,F57 Convertible
+2019,Mini,F60 Countryman
+2020,Mini,F54 Clubman
+2020,Mini,F57 Convertible
+2020,Mini,F60 Countryman
+2021,Mini,F54 Clubman
+2021,Mini,F57 Convertible
+2021,Mini,F60 Countryman
+2022,Mini,F54 Clubman
+2022,Mini,F57 Convertible
+2022,Mini,F60 Countryman
+2023,Mini,Cooper
+2014,Nissan,Rogue
+2022,Porsche,Cayenne
+2023,Porsche,Cayenne
+2024,Porsche,Panamera YAA
+2012,Ram,4500-5500
+2013,Ram,4500-5500
+2014,Ram,4500-5500
+2015,Ram,4500-5500
+2016,Ram,4500-5500
+2017,Ram,4500-5500
+2018,Ram,4500-5500
+2019,Ram,4500-5500
+2020,Ram,4500-5500
+2019,Subaru,Forester
+2024,Subaru,Crosstrek
+2024,Subaru,Impreza
+2012,Toyota,RAV4
+2024,Toyota,Grand Highlander
+2024,Toyota,Grand Highlander HV
+2015,Alfa Romeo,4C Coupe
+2016,Alfa Romeo,4C Coupe
+2017,Alfa Romeo,4C Coupe
+2018,Alfa Romeo,4C Coupe
+2019,Alfa Romeo,4C Coupe
+2020,Alfa Romeo,4C Coupe
+2021,Alfa Romeo,4C Coupe
+2022,Brightdrop,EV600
+2017,Chevrolet,S10
+2018,Chevrolet,S10
+2019,Chevrolet,S10
+2023,Chevrolet,Groove
+2023,Chevrolet,S10 Max
+2024,Chevrolet,Groove
+2024,Chevrolet,S10 Max
+2017,Fiat,124
+2018,Fiat,124
+2019,Fiat,124
+2020,Fiat,124
+2015,Ford,Police Interceptor
+2016,Ford,Police Interceptor
+2017,Ford,Police Interceptor
+2018,Ford,Police Interceptor
+2019,Ford,Police Interceptor
+2020,Ford,Police Interceptor
+2022,Ford,Mach-E
+2022,Ford,Police Interceptor
+2023,Ford,Police Interceptor
+2017,Honda,Clarity Fuel Cell
+2018,Honda,Clarity Fuel Cell
+2019,Honda,Clarity Fuel Cell
+2020,Honda,Clarity Fuel Cell
+2021,Honda,Clarity Fuel Cell
+2023,Honda,CR-V Hybrid
+2024,Honda,CR-V Hybrid
+2012,Infiniti,G Convertable
+2012,Infiniti,M
+2013,Infiniti,G Convertable
+2013,Infiniti,G Coupe
+2013,Land Rover,Evoque
+2013,Land Rover,Sport
+2014,Land Rover,Evoque
+2014,Land Rover,Sport
+2015,Land Rover,Evoque
+2015,Land Rover,Sport
+2016,Land Rover,Evoque
+2016,Land Rover,Sport
+2017,Land Rover,Evoque
+2017,Land Rover,Sport
+2018,Land Rover,Evoque
+2018,Land Rover,Sport
+2019,Land Rover,Evoque
+2019,Land Rover,Sport
+2020,Land Rover,Evoque
+2020,Land Rover,Sport
+2021,Land Rover,Evoque
+2022,Land Rover,Evoque
+2012,Lexus,CT200H
+2012,Lexus,ES350
+2012,Lexus,GX460
+2012,Lexus,HS250H
+2012,Lexus,IS250
+2012,Lexus,IS250C
+2012,Lexus,IS350
+2012,Lexus,IS350C
+2012,Lexus,LS460
+2012,Lexus,LS600H
+2012,Lexus,LX570
+2012,Lexus,RX350
+2012,Lexus,RX450H
+2013,Lexus,CT200H
+2013,Lexus,ES300H
+2013,Lexus,ES350
+2013,Lexus,GS350
+2013,Lexus,GS450H
+2013,Lexus,GX460
+2013,Lexus,IS250
+2013,Lexus,IS250C
+2013,Lexus,IS350
+2013,Lexus,IS350C
+2013,Lexus,LS460
+2013,Lexus,LS600H
+2013,Lexus,LX570
+2013,Lexus,RX350
+2013,Lexus,RX450H
+2014,Lexus,CT200H
+2014,Lexus,ES300H
+2014,Lexus,ES350
+2014,Lexus,GS350
+2014,Lexus,GS450H
+2014,Lexus,GX460
+2014,Lexus,IS200T
+2014,Lexus,IS250
+2014,Lexus,IS250C
+2014,Lexus,IS300
+2014,Lexus,IS350
+2014,Lexus,IS350C
+2014,Lexus,LS460
+2014,Lexus,LS600H
+2014,Lexus,LX570
+2014,Lexus,RX350
+2014,Lexus,RX450H
+2015,Lexus,CT200H
+2015,Lexus,ES300H
+2015,Lexus,ES350
+2015,Lexus,GS350
+2015,Lexus,GS450H
+2015,Lexus,GX460
+2015,Lexus,IS250
+2015,Lexus,IS250C
+2015,Lexus,IS350
+2015,Lexus,IS350C
+2015,Lexus,LS460
+2015,Lexus,LS600H
+2015,Lexus,LX570
+2015,Lexus,NX200T
+2015,Lexus,NX300H
+2015,Lexus,RC350
+2015,Lexus,RX350
+2015,Lexus,RX450H
+2016,Lexus,CT200H
+2016,Lexus,ES300H
+2016,Lexus,ES350
+2016,Lexus,GS200T
+2016,Lexus,GS300
+2016,Lexus,GS350
+2016,Lexus,GS450H
+2016,Lexus,GX460
+2016,Lexus,IS200T
+2016,Lexus,IS300
+2016,Lexus,IS350
+2016,Lexus,LS460
+2016,Lexus,LX570
+2016,Lexus,NX200T
+2016,Lexus,NX300H
+2016,Lexus,RC200T
+2016,Lexus,RC300
+2016,Lexus,RC350
+2016,Lexus,RX350
+2016,Lexus,RX450H
+2017,Lexus,CT200H
+2017,Lexus,ES300H
+2017,Lexus,ES350
+2017,Lexus,GS200T
+2017,Lexus,GS350
+2017,Lexus,GS450H
+2017,Lexus,GX460
+2017,Lexus,IS200T
+2017,Lexus,IS300
+2017,Lexus,IS350
+2017,Lexus,LS460
+2017,Lexus,LX570
+2017,Lexus,NX200T
+2017,Lexus,NX300H
+2017,Lexus,RC200T
+2017,Lexus,RC300
+2017,Lexus,RC350
+2017,Lexus,RX350
+2017,Lexus,RX450H
+2018,Lexus,ES300H
+2018,Lexus,ES350
+2018,Lexus,GS200T
+2018,Lexus,GS300
+2018,Lexus,GS350
+2018,Lexus,GS450H
+2018,Lexus,GX460
+2018,Lexus,IS300
+2018,Lexus,IS350
+2018,Lexus,LC500
+2018,Lexus,LC500H
+2018,Lexus,LS500
+2018,Lexus,LS500H
+2018,Lexus,LX570
+2018,Lexus,NX300
+2018,Lexus,NX300H
+2018,Lexus,RC300
+2018,Lexus,RC350
+2018,Lexus,RX350
+2018,Lexus,RX450H
+2019,Lexus,ES300H
+2019,Lexus,ES350
+2019,Lexus,GS300
+2019,Lexus,GS350
+2019,Lexus,GX460
+2019,Lexus,IS200T
+2019,Lexus,IS300
+2019,Lexus,IS350
+2019,Lexus,LC500
+2019,Lexus,LC500H
+2019,Lexus,LS500
+2019,Lexus,LS500H
+2019,Lexus,LX570
+2019,Lexus,NX300
+2019,Lexus,NX300H
+2019,Lexus,RC300
+2019,Lexus,RC350
+2019,Lexus,RX350
+2019,Lexus,RX450H
+2019,Lexus,UX200
+2019,Lexus,UX250H
+2020,Lexus,ES250
+2020,Lexus,ES300H
+2020,Lexus,ES350
+2020,Lexus,GS350
+2020,Lexus,GX460
+2020,Lexus,IS300
+2020,Lexus,IS350
+2020,Lexus,LC500
+2020,Lexus,LC500H
+2020,Lexus,LS500
+2020,Lexus,LS500H
+2020,Lexus,LX570
+2020,Lexus,NX300
+2020,Lexus,NX300H
+2020,Lexus,RC300
+2020,Lexus,RC350
+2020,Lexus,RX350
+2020,Lexus,RX450H
+2020,Lexus,UX200
+2020,Lexus,UX250H
+2021,Lexus,ES250
+2021,Lexus,ES300H
+2021,Lexus,ES350
+2021,Lexus,GX460
+2021,Lexus,IS300
+2021,Lexus,IS350
+2021,Lexus,LC500
+2021,Lexus,LC500C
+2021,Lexus,LC500H
+2021,Lexus,LS500
+2021,Lexus,LS500H
+2021,Lexus,LX570
+2021,Lexus,NX300
+2021,Lexus,NX300H
+2021,Lexus,RC300
+2021,Lexus,RC350
+2021,Lexus,RX350
+2021,Lexus,RX450H
+2021,Lexus,UX200
+2021,Lexus,UX250H
+2022,Lexus,ES250
+2022,Lexus,ES300H
+2022,Lexus,ES350
+2022,Lexus,GX460
+2022,Lexus,IS300
+2022,Lexus,IS350
+2022,Lexus,LC500
+2022,Lexus,LS500
+2022,Lexus,NX250
+2022,Lexus,NX350
+2022,Lexus,NX350H
+2022,Lexus,RC300
+2022,Lexus,RC350
+2022,Lexus,RX350
+2022,Lexus,RX450H
+2022,Lexus,UX200
+2022,Lexus,UX250H
+2023,Lexus,ES250
+2023,Lexus,ES300H
+2023,Lexus,ES350
+2023,Lexus,GX460
+2023,Lexus,IS300
+2023,Lexus,IS350
+2023,Lexus,LC500
+2023,Lexus,LC500C
+2023,Lexus,LS500
+2023,Lexus,LS500H
+2023,Lexus,LX600
+2023,Lexus,NX250
+2023,Lexus,NX350
+2023,Lexus,NX350H
+2023,Lexus,RC300
+2023,Lexus,RX350
+2023,Lexus,RX350H
+2023,Lexus,RX500H
+2023,Lexus,RZ450E
+2023,Lexus,UX250H
+2024,Lexus,ES250
+2024,Lexus,ES300H
+2024,Lexus,ES350
+2024,Lexus,IS300
+2024,Lexus,IS350
+2024,Lexus,IS500
+2024,Lexus,LC500
+2024,Lexus,LC500C
+2024,Lexus,LC500H
+2024,Lexus,LS500
+2024,Lexus,LS500H
+2024,Lexus,LX600
+2024,Lexus,NX250
+2024,Lexus,NX350
+2024,Lexus,NX350H
+2024,Lexus,RC300
+2024,Lexus,RX350
+2024,Lexus,RX350H
+2024,Lexus,RX500H
+2024,Lexus,RZ450E
+2024,Lexus,UX250H
+2012,Mazda,3
+2012,Mazda,6
+2013,Mazda,3
+2013,Mazda,6
+2014,Mazda,3
+2014,Mazda,6
+2015,Mazda,3
+2015,Mazda,6
+2016,Mazda,2
+2016,Mazda,3
+2016,Mazda,6
+2017,Mazda,2
+2017,Mazda,3
+2017,Mazda,6
+2018,Mazda,2
+2018,Mazda,3
+2018,Mazda,6
+2019,Mazda,2
+2019,Mazda,3
+2019,Mazda,6
+2020,Mazda,2
+2020,Mazda,3
+2020,Mazda,6
+2021,Mazda,2
+2021,Mazda,3
+2021,Mazda,6
+2022,Mazda,2
+2022,Mazda,3
+2023,Mazda,2
+2023,Mazda,3
+2024,Mazda,2
+2024,Mazda,3
+2023,Nissan,Z
+2024,Nissan,Z
+2013,Porsche,Carrera
+2014,Porsche,Carrera
+2015,Porsche,Carrera
+2016,Porsche,Carrera
+2017,Porsche,Carrera
+2018,Porsche,Carrera
+2019,Porsche,Carrera
+2020,Porsche,Carrera
+2021,Porsche,Carrera
+2022,Porsche,Carrera
+2023,Porsche,Carrera
+2012,Ram,Tradesman
+2013,Ram,Tradesman
+2014,Ram,Tradesman
+2015,Ram,Tradesman
+2016,Ram,Tradesman
+2017,Ram,Tradesman
+2018,Ram,Tradesman
+2019,Ram,Tradesman
+2020,Ram,Tradesman
+2020,Chevrolet,S10
+2013,Ford,Police Interceptor
+2014,Ford,Police Interceptor Sedan
+2014,Ford,Police Interceptor Utility
+2015,Ford,Police Interceptor Sedan
+2015,Ford,Police Interceptor Utility
+2016,Ford,Police Interceptor Sedan
+2016,Ford,Police Interceptor Utility
+2017,Ford,Police Interceptor Sedan
+2017,Ford,Police Interceptor Utility
+2018,Ford,Police Interceptor Sedan
+2018,Ford,Police Interceptor Utility
+2019,Ford,Econoline
+2019,Ford,Police Interceptor Sedan
+2019,Ford,Police Interceptor Utility
+2022,Ford,Transit Connect
+2023,Hyundai,Santa Fe Hybrid
+2023,Hyundai,Santa Fe PHEV
+2024,Hyundai,Tuscon Hybrid HEV
+2024,Hyundai,Tuscon PHEV
+2012,Infiniti,G37 Coupe
+2012,Infiniti,G37 Sedan
+2012,Land Rover,Sport
+2019,Land Rover,Velar
+2020,Land Rover,Velar
+2021,Land Rover,Velar
+2023,Lexus,IS500
+2023,Lexus,LC500H
+2024,Lexus,NX300
+2024,Porsche,Carrera
+2024,Porsche,9Yb
