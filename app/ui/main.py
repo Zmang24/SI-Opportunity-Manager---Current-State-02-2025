@@ -946,37 +946,45 @@ class FloatingToolbar(QWidget):
 
     def update_icon_colors(self):
         """Update the colors of the icons in a rainbow pattern"""
-        self.current_hue = (self.current_hue + 0.005) % 1.0  # Slowly increment hue
-        
-        # Convert HSV to RGB (hue cycles, full saturation and value)
-        color = QColor.fromHsvF(self.current_hue, 0.7, 1.0)
-        
-        # Update each button's icon color
-        for btn_id, btn in self.buttons.items():
-            # Skip buttons with static colors
-            if btn_id in self.static_colors:
-                continue
-                
-            # Get the current icon
-            icon = btn.icon()
-            if not icon.isNull():
-                pixmap = icon.pixmap(24, 24)
-                
-                # Convert to image for color manipulation
-                image = pixmap.toImage()
-                
-                # Apply new color while preserving alpha
-                for x in range(image.width()):
-                    for y in range(image.height()):
-                        pixel_color = image.pixelColor(x, y)
-                        if pixel_color.alpha() > 0:
-                            new_color = QColor(color)
-                            new_color.setAlpha(pixel_color.alpha())
-                            image.setPixelColor(x, y, new_color)
-                
-                # Convert back to pixmap and update button
-                colored_pixmap = QPixmap.fromImage(image)
-                btn.setIcon(QIcon(colored_pixmap))
+        try:
+            self.current_hue = (self.current_hue + 0.005) % 1.0  # Slowly increment hue
+            
+            # Convert HSV to RGB (hue cycles, full saturation and value)
+            color = QColor.fromHsvF(self.current_hue, 0.7, 1.0)
+            
+            # Update each button's icon color
+            for btn_id, btn in self.buttons.items():
+                # Skip buttons with static colors
+                if btn_id in self.static_colors:
+                    continue
+                    
+                # Get the current icon
+                icon = btn.icon()
+                if not icon.isNull():
+                    pixmap = icon.pixmap(24, 24)
+                    if not pixmap.isNull():
+                        # Convert to image for color manipulation
+                        image = pixmap.toImage()
+                        
+                        # Apply new color while preserving alpha
+                        for x in range(image.width()):
+                            for y in range(image.height()):
+                                pixel_color = image.pixelColor(x, y)
+                                if pixel_color.alpha() > 0:
+                                    new_color = QColor(color)
+                                    new_color.setAlpha(pixel_color.alpha())
+                                    image.setPixelColor(x, y, new_color)
+                        
+                        # Convert back to pixmap and update button
+                        colored_pixmap = QPixmap.fromImage(image)
+                        if not colored_pixmap.isNull():
+                            btn.setIcon(QIcon(colored_pixmap))
+            
+            return 0  # Return success to Windows message handler
+            
+        except Exception as e:
+            print(f"Error updating icon colors: {str(e)}")
+            return 0  # Return success even on error to prevent Windows message handler issues
 
     def closeEvent(self, event):
         """Stop the color timer when closing"""
