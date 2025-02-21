@@ -1,0 +1,15 @@
+{
+    "reportMissingImports": "warning",
+    "typeCheckingMode": "strict",
+    "exclude": [
+        "**/Lib/**",
+        "**/site-packages/**"
+    ],
+    "ignore": [
+        "**/Lib/datetime.py",
+        "**/site-packages/datetime.py"
+    ],
+    "stubPath": "typings",
+    "useLibraryCodeForTypes": true,
+    "reportGeneralTypeIssues": "warning"
+} 

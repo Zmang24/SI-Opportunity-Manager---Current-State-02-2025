@@ -18,48 +18,37 @@ from app.database.connection import SessionLocal
 from app.models.models import Opportunity, Notification, User
 from datetime import datetime, timedelta, timezone
 from win10toast import ToastNotifier
+from sqlalchemy import and_, or_
+import traceback
+from typing import Optional, Dict, List, Union, cast
 
 class NotificationBadge(QLabel):
+    """A badge showing the number of unread notifications"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAlignment(Qt.AlignCenter)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Slightly larger size for better visibility
+        self.setFixedSize(22, 22)
+        
+        # Modern style with gradient background and refined typography
         self.setStyleSheet("""
             QLabel {
-                background-color: #ff4444;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #FF4B4B,
+                    stop:1 #FF6B6B);
                 color: white;
-                border-radius: 10px;
-                padding: 2px 6px;
-                font-size: 10px;
-                font-weight: bold;
-                min-width: 20px;
-                min-height: 20px;
+                border-radius: 11px;
+                padding: 0px;
+                font-size: 11px;
+                font-weight: 600;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                margin: 0px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
         """)
-        self.hide()
-        
-        # Position the badge in the top-right corner of the parent
-        if parent:
-            self.setParent(parent)
-            self.move(parent.width() - 25, 5)
-            parent.resizeEvent = lambda e: self.updatePosition(e)
-    
-    def updatePosition(self, event):
-        """Update badge position when parent is resized"""
-        if self.parent():
-            self.move(self.parent().width() - 25, 5)
-    
-    def setText(self, text):
-        """Override setText to ensure proper sizing"""
-        super().setText(text)
-        self.adjustSize()
-        if self.parent():
-            self.updatePosition(None)
-            
-    def show(self):
-        """Override show to ensure proper positioning"""
-        super().show()
-        if self.parent():
-            self.updatePosition(None)
+        print("DEBUG: NotificationBadge created with size:", self.size())
 
 class DragHandle(QWidget):
     def __init__(self, parent=None, orientation=Qt.Horizontal):
@@ -169,17 +158,9 @@ class FloatingToolbar(QWidget):
             "close": "#FF0000"  # Keep red
         }
         
-        # Get user's color theme preference
-        if self.parent() and self.parent().current_user:
-            self.current_theme = self.parent().current_user.icon_theme
-        else:
-            self.current_theme = "Rainbow Animation"
-            
-        # Start color timer only if rainbow animation is selected
-        if self.current_theme == "Rainbow Animation":
-            self.color_timer.start(50)  # Update every 50ms for smooth animation
-        else:
-            self.apply_static_theme()
+        # Initialize with default theme
+        self.current_theme = "Rainbow Animation"
+        self.color_timer.start(50)  # Start with rainbow animation by default
 
     def initUI(self):
         # Main layout
@@ -224,13 +205,19 @@ class FloatingToolbar(QWidget):
 
         self.buttons = {}
         for btn_id, icon_file, icon_color, tooltip in buttons_data:
+            print(f"\nDEBUG: Processing button {btn_id}")
             # Skip management button if user is not admin/manager
             if btn_id == "management":
                 parent = self.parent()
+                print(f"DEBUG: Management button check - Parent: {parent}, Current user: {parent.current_user if parent else None}")
                 if not parent or not parent.current_user:
+                    print("DEBUG: Skipping management button - No parent or current user")
                     continue
-                if parent.current_user.role not in ["admin", "manager"]:
+                print(f"DEBUG: User role: {parent.current_user.role}")
+                if parent.current_user.role.lower() not in ["admin", "manager"]:
+                    print(f"DEBUG: Skipping management button - User role not admin/manager")
                     continue
+                print("DEBUG: Adding management button")
                 
             btn = QPushButton()
             btn.setFixedSize(36, 36)
@@ -271,6 +258,7 @@ class FloatingToolbar(QWidget):
             # Load and set SVG icon
             icon_path = os.path.join(icons_path, icon_file)
             if os.path.exists(icon_path):
+                print(f"DEBUG: Loading icon from {icon_path}")
                 icon_pixmap = QPixmap(icon_path)
                 
                 # Convert icon to specified color
@@ -288,14 +276,21 @@ class FloatingToolbar(QWidget):
                 scaled_pixmap = icon_pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 btn.setIcon(QIcon(scaled_pixmap))
                 btn.setIconSize(QSize(24, 24))
+            else:
+                print(f"DEBUG: Icon file not found: {icon_path}")
             
             # Connect button signals
             if btn_id == "new":
                 btn.clicked.connect(lambda: self.parent().show_opportunity_form() if self.parent() and self.parent().current_user else None)
             elif btn_id == "dashboard":
                 btn.clicked.connect(lambda: self.parent().show_dashboard() if self.parent() and self.parent().current_user else None)
+                # Create and configure notification badge
                 self.dashboard_badge = NotificationBadge(btn)
+                # Position the badge in the top-right corner with adjusted position
+                self.dashboard_badge.move(15, -5)
                 self.dashboard_badge.hide()
+                self.dashboard_badge.raise_()
+                print("DEBUG: Dashboard badge initialized at position:", self.dashboard_badge.pos())
             elif btn_id == "management":
                 btn.clicked.connect(lambda: self.parent().show_management_portal() if self.parent() and self.parent().current_user else None)
             elif btn_id == "profile":
@@ -312,6 +307,7 @@ class FloatingToolbar(QWidget):
                 btn.clicked.connect(QApplication.quit)
             
             self.buttons[btn_id] = btn
+            print(f"DEBUG: Added button {btn_id} to buttons dictionary")
             self.container_layout.addWidget(btn, 0, Qt.AlignCenter)
         
         # Add container to main layout
@@ -532,9 +528,25 @@ class FloatingToolbar(QWidget):
         
         # Re-add buttons in the correct order
         button_order = ['new', 'dashboard', 'management', 'profile', 'pin', 'layout', 'opacity', 'close']
+        print("\nDEBUG: Enforcing button order")
+        print(f"DEBUG: Available buttons: {list(self.buttons.keys())}")
+        
+        # Check if management button should be included
+        parent = self.parent()
+        if parent and parent.current_user and parent.current_user.role.lower() in ["admin", "manager"]:
+            print("DEBUG: User has admin/manager role, management button should be present")
+        else:
+            print("DEBUG: User does not have admin/manager role, management button should not be present")
+            if "management" in button_order:
+                button_order.remove("management")
+        
+        # Add buttons in order
         for btn_id in button_order:
             if btn_id in self.buttons:
+                print(f"DEBUG: Adding button {btn_id} to layout")
                 new_layout.addWidget(self.buttons[btn_id], 0, Qt.AlignCenter)
+            else:
+                print(f"DEBUG: Button {btn_id} not found in buttons dictionary")
         
         # Set the new layout
         QWidget().setLayout(self.container.layout())
@@ -628,7 +640,7 @@ class FloatingToolbar(QWidget):
 
     def check_updates(self):
         """Check for new opportunities and notifications"""
-        if not self.parent().current_user:
+        if not self.parent() or not self.parent().current_user:
             return
             
         current_time = datetime.now(timezone.utc)
@@ -639,110 +651,94 @@ class FloatingToolbar(QWidget):
         try:
             # Check new opportunities (notify about all new tickets)
             new_opportunities = db.query(Opportunity).filter(
-                Opportunity.created_at > self.last_checked_time,
-                Opportunity.creator_id != self.parent().current_user.id,  # Don't notify for own tickets
-                Opportunity.status.ilike("New")  # Case-insensitive status check
+                Opportunity.status.ilike("New"),  # Case-insensitive status check
+                Opportunity.creator_id != str(self.parent().current_user.id)  # Don't notify for own tickets
             ).all()
             
-            print(f"DEBUG: Found {len(new_opportunities)} new opportunities")
+            # Count unviewed opportunities (only those that haven't been viewed)
+            unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
+            print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed opportunities")
             
             # Check new notifications (these are already filtered by user_id)
             new_notifications = db.query(Notification).filter(
-                Notification.user_id == self.parent().current_user.id,
-                Notification.created_at > self.last_checked_time,
+                Notification.user_id == str(self.parent().current_user.id),
                 Notification.read == False
             ).all()
             
             print(f"DEBUG: Found {len(new_notifications)} new notifications")
             
-            # Get total unread notifications for badge count
-            total_unread = db.query(Notification).filter(
-                Notification.user_id == self.parent().current_user.id,
-                Notification.read == False
-            ).count()
+            # Update total notification count (unviewed opportunities + unread notifications)
+            total_count = len(unviewed_opportunities) + len(new_notifications)
+            print(f"DEBUG: Total notification count: {total_count}")
             
-            print(f"DEBUG: Total unread notifications: {total_unread}")
+            # Only update notification count if it's different
+            if total_count != self.notification_count:
+                self.notification_count = total_count
+                self.update_notification_badge()
             
-            # Handle new opportunities
-            if new_opportunities:
-                for opp in new_opportunities:
-                    if opp.id not in self.viewed_opportunities:
-                        print(f"DEBUG: Showing notification for new opportunity {opp.id}")
-                        self.show_windows_notification(
-                            "New SI Opportunity",
-                            f"New Ticket Available!\nTitle: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}..."
-                        )
-                        self.viewed_opportunities.add(opp.id)
+            # Show aggregate notification for new opportunities only if there are new ones since last check
+            if len(unviewed_opportunities) > 0 and current_time > self.last_checked_time:
+                self.show_windows_notification(
+                    "New Opportunities",
+                    f"There are {len(unviewed_opportunities)} new opportunities in the dashboard"
+                )
             
-            # Handle new notifications (these are already targeted to the user)
-            if new_notifications:
+            # Show aggregate notification for new notifications only if there are new ones since last check
+            if len(new_notifications) > 0 and current_time > self.last_checked_time:
+                self.show_windows_notification(
+                    "New Notifications",
+                    f"You have {len(new_notifications)} new notifications"
+                )
+                # Add all new notifications to viewed set
                 for notif in new_notifications:
-                    if notif.id not in self.viewed_notifications:
-                        print(f"DEBUG: Showing notification {notif.id} of type {notif.type}")
-                        self.show_windows_notification(
-                            "SI Opportunity Update",
-                            notif.message
-                        )
-                        self.viewed_notifications.add(notif.id)
+                    self.viewed_notifications.add(notif.id)
             
-            # Update notification badge with total unread count
-            print(f"DEBUG: Setting notification count to {total_unread}")
-            self.notification_count = total_unread
-            self.update_notification_badge()
-                
+            # Update last check time only for future notifications
             self.last_checked_time = current_time
             
+        except Exception as e:
+            print(f"Error checking updates: {str(e)}")
         finally:
             db.close()
-            
+
     def show_windows_notification(self, title, message):
         """Show Windows notification"""
-        self.toaster.show_toast(
-            title,
-            message,
-            duration=5,
-            threaded=True
-        )
-        
+        try:
+            # Ensure the toaster is initialized
+            if not hasattr(self, 'toaster'):
+                self.toaster = ToastNotifier()
+            
+            # Show the notification in a non-blocking way
+            self.toaster.show_toast(
+                title,
+                message,
+                duration=5,
+                threaded=True,
+                icon_path=None  # Let Windows use the app's default icon
+            )
+            print(f"DEBUG: Showing notification - Title: {title}, Message: {message}")
+        except Exception as e:
+            print(f"Error showing notification: {str(e)}")
+
     def update_notification_badge(self):
         """Update the notification badge on the dashboard button"""
-        if self.notification_count > 0:
-            self.dashboard_badge.setText(str(self.notification_count))
-            self.dashboard_badge.show()
-        else:
-            self.dashboard_badge.hide()
-            
-    def clear_notifications(self):
-        """Clear notification count and mark current items as viewed"""
-        if not self.parent().current_user:
-            return
-            
-        db = SessionLocal()
         try:
-            # Mark all notifications as read
-            notifications = db.query(Notification).filter(
-                Notification.user_id == self.parent().current_user.id,
-                Notification.read == False
-            ).all()
-            
-            for notif in notifications:
-                notif.read = True
-                self.viewed_notifications.add(notif.id)
-            
-            # Get all opportunities for reference
-            opportunities = db.query(Opportunity).all()
-            self.viewed_opportunities.update(opp.id for opp in opportunities)
-            
-            db.commit()
-            
-            # Reset notification count
-            self.notification_count = 0
-            self.update_notification_badge()
-            
-            # Update last checked time to avoid re-notifying
-            self.last_checked_time = datetime.now()
-        finally:
-            db.close()
+            print(f"DEBUG: Updating notification badge. Count: {self.notification_count}")
+            if self.notification_count > 0:
+                # Set the text and ensure it's visible
+                self.dashboard_badge.setText(str(self.notification_count))
+                self.dashboard_badge.show()
+                
+                # Position in top-right corner of the button
+                button_rect = self.buttons["dashboard"].geometry()
+                self.dashboard_badge.move(button_rect.right() - 15, button_rect.top() - 5)
+                self.dashboard_badge.raise_()
+                print("DEBUG: Showing notification badge")
+            else:
+                self.dashboard_badge.hide()
+                print("DEBUG: Hiding notification badge")
+        except Exception as e:
+            print(f"Error updating notification badge: {str(e)}")
         
     def toggle_pin(self):
         """Toggle pin state and update window flags"""
@@ -983,7 +979,7 @@ class FloatingToolbar(QWidget):
             return 0  # Return success to Windows message handler
             
         except Exception as e:
-            print(f"Error updating icon colors: {str(e)}")
+            print(f"Error updating icon colors: {str(e)}\nTraceback: {traceback.format_exc()}")
             return 0  # Return success even on error to prevent Windows message handler issues
 
     def closeEvent(self, event):
@@ -1000,18 +996,22 @@ class FloatingToolbar(QWidget):
             "Purple Theme": "#9C27B0"
         }
         
+        print(f"Applying static theme: {self.current_theme}")
         if self.current_theme in theme_colors:
             color = QColor(theme_colors[self.current_theme])
+            print(f"Using color: {color.name()}")
             
             # Update each button's icon color
             for btn_id, btn in self.buttons.items():
                 # Skip buttons with static colors
                 if btn_id in self.static_colors:
+                    print(f"Skipping static color button: {btn_id}")
                     continue
                     
                 # Get the current icon
                 icon = btn.icon()
                 if not icon.isNull():
+                    print(f"Updating icon for button: {btn_id}")
                     pixmap = icon.pixmap(24, 24)
                     
                     # Convert to image for color manipulation
@@ -1029,35 +1029,84 @@ class FloatingToolbar(QWidget):
                     # Convert back to pixmap and update button
                     colored_pixmap = QPixmap.fromImage(image)
                     btn.setIcon(QIcon(colored_pixmap))
-
-    def update_theme(self, theme):
-        """Update the color theme"""
-        self.current_theme = theme
-        
-        # Stop color timer if not using rainbow animation
-        if theme != "Rainbow Animation":
-            self.color_timer.stop()
-            self.apply_static_theme()
         else:
-            # Start color timer for rainbow animation
-            self.current_hue = 0.0
-            self.color_timer.start(50)
+            print(f"Warning: Unknown theme color: {self.current_theme}")
+
+    def update_theme(self, new_theme):
+        """Update the toolbar's theme"""
+        print(f"Updating theme to: {new_theme}")
+        self.current_theme = new_theme
+        
+        # Stop color timer if it's running
+        if self.color_timer.isActive():
+            self.color_timer.stop()
+        
+        # Start or stop color timer based on theme
+        if new_theme == "Rainbow Animation":
+            self.color_timer.start(50)  # Update every 50ms for smooth animation
+        else:
+            self.apply_static_theme()
+
+    def clear_notifications(self):
+        """Clear all notifications and reset the badge"""
+        db = SessionLocal()
+        try:
+            # Mark all notifications as read
+            notifications = db.query(Notification).filter(
+                Notification.user_id == str(self.parent().current_user.id),
+                Notification.read == False
+            ).all()
+            
+            for notification in notifications:
+                notification.read = True
+            
+            db.commit()
+            
+            # Reset notification count and hide badge
+            self.notification_count = 0
+            if hasattr(self, 'dashboard_badge'):
+                self.dashboard_badge.hide()
+            
+            # Clear viewed sets
+            self.viewed_opportunities.clear()
+            self.viewed_notifications.clear()
+            
+        except Exception as e:
+            print(f"Error clearing notifications: {str(e)}")
+        finally:
+            db.close()
 
 class LoadingOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Set the size to match the parent if provided
-        if parent:
-            self.setGeometry(parent.rect())
-        else:
-            self.setFixedSize(200, 200)
+        # Set fixed size
+        self.setFixedSize(300, 300)
             
-        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        # Set window flags to ensure it stays on top and is frameless
+        self.setWindowFlags(
+            Qt.Window |  # Make it an independent window
+            Qt.FramelessWindowHint |  # No window frame
+            Qt.WindowStaysOnTopHint |  # Stay on top
+            Qt.Tool  # Don't show in taskbar
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
         
         # Create layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
+        
+        # Add logo
+        self.logo_label = QLabel()
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                'resources', 'SI Opportunity Manager LOGO.png.png')
+        if os.path.exists(logo_path):
+            logo_pixmap = QPixmap(logo_path)
+            scaled_pixmap = logo_pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.logo_label.setPixmap(scaled_pixmap)
+            self.logo_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.logo_label)
         
         # Add loading label
         self.loading_label = QLabel("Loading...")
@@ -1072,34 +1121,39 @@ class LoadingOverlay(QWidget):
         self.loading_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.loading_label)
         
+        # Add stretch to center vertically
+        layout.addStretch()
+        
         # Set widget style
         self.setStyleSheet("""
             QWidget {
                 background-color: rgba(0, 0, 0, 180);
+                border-radius: 15px;
             }
         """)
         
-        # If no parent, center on screen
-        if not parent:
-            self.center_on_screen()
+        # Center on screen
+        self.center_on_screen()
         
     def center_on_screen(self):
+        # Get the screen geometry
         screen = QApplication.primaryScreen().availableGeometry()
-        self.move(
-            screen.width() // 2 - self.width() // 2,
-            screen.height() // 2 - self.height() // 2
-        )
+        # Calculate center position
+        center_x = (screen.width() - self.width()) // 2
+        center_y = (screen.height() - self.height()) // 2
+        # Move to center
+        self.move(screen.left() + center_x, screen.top() + center_y)
         
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(0, 0, 0, 180))
-        painter.drawRect(self.rect())
+        painter.drawRoundedRect(self.rect(), 15, 15)  # Added rounded corners
 
 class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: Optional[QMainWindow] = None) -> None:
+        super().__init__(parent)
         self.setWindowTitle('SI Opportunity Manager')
         
         # Load and set the window icon
@@ -1214,13 +1268,44 @@ class MainWindow(QMainWindow):
         
         # Hide auth widget immediately
         self.auth.hide()
-        QApplication.processEvents()  # Force update to hide auth
         
-        # Create and show loading overlay
+        # Create loading overlay without parent to make it independent
         loading = LoadingOverlay()
         loading.show()
-        loading.raise_()
-        QApplication.processEvents()  # Force update to show loading
+        loading.raise_()  # Ensure it's on top
+        
+        def create_toolbar():
+            # Delete existing toolbar if it exists
+            if hasattr(self, 'toolbar'):
+                print("DEBUG: Deleting existing toolbar")
+                self.toolbar.hide()
+                self.toolbar.deleteLater()
+                
+            # Create new toolbar
+            print("DEBUG: Creating new toolbar")
+            print(f"DEBUG: Current user before toolbar creation: {self.current_user.role}")
+            self.toolbar = FloatingToolbar(self)
+            if not self.toolbar.parent():
+                print("DEBUG: Warning - Toolbar parent not set, setting it now")
+                self.toolbar.setParent(self)
+            print(f"DEBUG: Toolbar parent: {self.toolbar.parent()}")
+            print(f"DEBUG: Toolbar current_user: {self.toolbar.parent().current_user if self.toolbar.parent() else None}")
+                
+            # Set the user's theme preference
+            print(f"Setting initial theme to: {user.icon_theme}")
+            self.toolbar.update_theme(user.icon_theme)
+            
+            # Show toolbar
+            self.toolbar.show()
+            self.toolbar.raise_()
+            self.toolbar.load_position()
+            
+            # Hide loading overlay
+            loading.hide()
+            loading.deleteLater()
+        
+        # Add a small delay before creating the toolbar
+        QTimer.singleShot(100, create_toolbar)
         
         # Recreate dashboard with current user
         if hasattr(self, 'dashboard'):
@@ -1228,45 +1313,39 @@ class MainWindow(QMainWindow):
         self.dashboard = DashboardWidget(current_user=user)
         
         # Create management portal if user is admin/manager
-        if user.role in ["admin", "manager"]:
+        if user.role.lower() in ["admin", "manager"]:
             print("DEBUG: Creating management portal for admin/manager")
             self.management_portal = ManagementPortal(user, self)
             self.management_portal.refresh_needed.connect(self.on_management_refresh)
         
-        # Recreate toolbar to ensure proper button visibility
-        if hasattr(self, 'toolbar'):
-            self.toolbar.deleteLater()
-        self.toolbar = FloatingToolbar(self)
-        
-        # Initialize last_checked_time to user's last login or 24 hours ago
+        # Initialize notification system
         db = SessionLocal()
         try:
+            # Get last login time or use a default (24 hours ago)
             last_login = db.query(User.last_login).filter(User.id == user.id).scalar()
             if last_login:
                 self.toolbar.last_checked_time = last_login
             else:
+                # For new users or first login, check last 24 hours
                 self.toolbar.last_checked_time = datetime.now(timezone.utc) - timedelta(hours=24)
             
             # Update last login time
             user_obj = db.query(User).filter(User.id == user.id).first()
-            user_obj.last_login = datetime.now(timezone.utc)
-            db.commit()
+            if user_obj:
+                user_obj.last_login = datetime.now(timezone.utc)
+                db.commit()
+            
+            # Start notification check timer
+            self.notification_timer = QTimer(self)
+            self.notification_timer.timeout.connect(self.toolbar.check_updates)
+            self.notification_timer.start(30000)  # Check every 30 seconds
+            
+            # Do an immediate check for notifications
+            self.toolbar.check_updates()
+            
         finally:
             db.close()
-        
-        def finish_loading():
-            # Hide loading overlay
-            loading.hide()
-            loading.deleteLater()
-            
-            # Show toolbar
-            self.toolbar.show()
-            self.toolbar.raise_()
-            self.toolbar.load_position()
-        
-        # Show loading for at least 500ms to ensure smooth transition
-        QTimer.singleShot(500, finish_loading)
-        
+
     def on_account_created(self, user):
         self.account_creation.hide()
         self.auth.show()
@@ -1293,25 +1372,36 @@ class MainWindow(QMainWindow):
 
     def on_profile_updated(self):
         """Handle profile updates"""
+        print("Profile update received")
         db = SessionLocal()
         try:
             # Refresh current user data
+            print(f"Refreshing user data for ID: {self.current_user.id}")
             self.current_user = db.query(User).filter(User.id == self.current_user.id).first()
+            print(f"User data refreshed, theme: {self.current_user.icon_theme}")
             
             # Update toolbar theme if it exists
             if hasattr(self, 'toolbar'):
+                print("Updating toolbar theme")
                 self.toolbar.update_theme(self.current_user.icon_theme)
+            else:
+                print("Warning: Toolbar not found")
             
             # Update other windows that might need refreshing
             if hasattr(self, 'dashboard'):
+                print("Refreshing dashboard")
                 self.dashboard.load_opportunities()
             if hasattr(self, 'management_portal') and self.management_portal is not None:
                 try:
+                    print("Refreshing management portal")
                     self.management_portal.load_data()
                 except Exception as e:
-                    print(f"Warning: Error updating management portal: {str(e)}")
+                    print(f"Error updating management portal: {str(e)}\nTraceback: {traceback.format_exc()}")
+        except Exception as e:
+            print(f"Error in profile update: {str(e)}\nTraceback: {traceback.format_exc()}")
         finally:
             db.close()
+            print("Profile update completed")
 
     def closeEvent(self, event):
         """Handle application close event"""

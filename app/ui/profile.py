@@ -1,23 +1,40 @@
+from typing import Dict, Optional, Union, List, cast
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QLineEdit, QFormLayout, QFrame,
                            QMessageBox, QScrollArea, QComboBox)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QShowEvent, QCloseEvent
 from app.database.connection import SessionLocal
 from app.models.models import User, Opportunity
 from app.auth.auth_handler import hash_pin
-from datetime import datetime, timedelta
+from sqlalchemy import update
+import traceback
 
 class ProfileWidget(QWidget):
     profile_updated = pyqtSignal()
     
-    def __init__(self, current_user):
+    def __init__(self, current_user: User):
         super().__init__()
         self.current_user = current_user
+        self.fields: Dict[str, Union[QLineEdit, QComboBox]] = {}
+        self.stats_labels: Dict[str, QLabel] = {}
         self.initUI()
         
-    def closeEvent(self, event):
-        # Hide instead of close
-        event.ignore()
+    def showEvent(self, a0: QShowEvent) -> None:
+        """Update statistics when the profile is shown"""
+        super().showEvent(a0)
+        self.load_statistics()
+        
+        # Set echo mode for password fields
+        for field_name in ['pin', 'new_pin', 'confirm_pin']:
+            field = self.fields.get(field_name)
+            if isinstance(field, QLineEdit):
+                field.setEchoMode(QLineEdit.EchoMode.Password)  # type: ignore
+        
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        """Handle close event"""
+        super().closeEvent(a0)
+        a0.ignore()
         self.hide()
         
     def initUI(self):
@@ -143,7 +160,6 @@ class ProfileWidget(QWidget):
         form_layout.setSpacing(15)
         
         # Create fields
-        self.fields = {}
         field_configs = [
             ("username", "Username:", True),
             ("email", "Email:", False),
@@ -156,18 +172,9 @@ class ProfileWidget(QWidget):
         
         for config in field_configs:
             field_id, label, readonly, *extra = config
-            if len(extra) > 0 and isinstance(extra[0], list):  # Combo box
-                field = QComboBox()
-                field.addItems(extra[0])
-                field.setCurrentText(getattr(self.current_user, field_id))
-                field.setEnabled(not readonly)
-            else:  # Line edit
-                field = QLineEdit()
-                field.setText(str(getattr(self.current_user, field_id)))
-                field.setReadOnly(readonly)
-            
-            self.fields[field_id] = field
-            form_layout.addRow(label, field)
+            label_widget = QLabel(label)
+            self.create_field(field_id, label, not readonly, extra if extra else None)
+            form_layout.addRow(label_widget, self.fields[field_id])
             
         # Add PIN change section
         pin_section = QFrame()
@@ -180,11 +187,11 @@ class ProfileWidget(QWidget):
         
         pin_form = QFormLayout()
         self.current_pin = QLineEdit()
-        self.current_pin.setEchoMode(QLineEdit.Password)
+        self.current_pin.setEchoMode(QLineEdit.EchoMode.Password)
         self.new_pin = QLineEdit()
-        self.new_pin.setEchoMode(QLineEdit.Password)
+        self.new_pin.setEchoMode(QLineEdit.EchoMode.Password)
         self.confirm_pin = QLineEdit()
-        self.confirm_pin.setEchoMode(QLineEdit.Password)
+        self.confirm_pin.setEchoMode(QLineEdit.EchoMode.Password)
         
         pin_form.addRow("Current PIN:", self.current_pin)
         pin_form.addRow("New PIN:", self.new_pin)
@@ -238,9 +245,9 @@ class ProfileWidget(QWidget):
         stats_layout.addWidget(stats_title)
         
         # Add statistics
-        self.stats_labels = {}
         stats_configs = [
             ("total_opportunities", "Total Opportunities Created:"),
+            ("accepted_opportunities", "Total Opportunities Accepted:"),
             ("active_opportunities", "Active Opportunities:"),
             ("completed_opportunities", "Completed Opportunities:"),
             ("avg_response_time", "Average Response Time:"),
@@ -346,153 +353,178 @@ class ProfileWidget(QWidget):
             }
         """)
         
-    def load_statistics(self):
-        """Load user statistics"""
-        db = SessionLocal()
-        try:
-            # Get opportunities statistics for both created and accepted opportunities
-            created_opps = db.query(Opportunity).filter(
-                Opportunity.creator_id == str(self.current_user.id)
-            ).all()
+    def create_field(self, name: str, label: str, is_editable: bool, extra: Optional[List[List[str]]] = None) -> None:
+        """Create a form field"""
+        if extra and extra[0]:  # Combo box
+            field = QComboBox()
+            field.addItems(extra[0])
+            field.setCurrentText(str(getattr(self.current_user, name, '')))
+        else:
+            field = QLineEdit()
+            field.setText(str(getattr(self.current_user, name, '')))
+            field.setReadOnly(not is_editable)
             
-            accepted_opps = db.query(Opportunity).filter(
-                Opportunity.acceptor_id == str(self.current_user.id)
-            ).all()
+            if name in ['pin', 'new_pin', 'confirm_pin']:
+                field.setEchoMode(QLineEdit.EchoMode.Password)
             
-            # Combine opportunities while avoiding duplicates
-            all_opps = list({opp.id: opp for opp in created_opps + accepted_opps}.values())
+        self.fields[name] = field
             
-            total_opps = len(all_opps)
-            active_opps = len([o for o in all_opps if o.status.lower() in ["new", "in progress"]])
-            completed_opps = len([o for o in all_opps if o.status.lower() == "completed"])
-            
-            # Calculate average response time for completed opportunities
-            response_times = []
-            for opp in all_opps:
-                if opp.status.lower() == "completed" and opp.completed_at and opp.created_at:
-                    response_time = opp.completed_at - opp.created_at
-                    response_times.append(response_time)
-            
-            if response_times:
-                avg_response = sum(response_times, timedelta()) / len(response_times)
-                # Format the response time nicely
-                days = avg_response.days
-                hours = avg_response.seconds // 3600
-                minutes = (avg_response.seconds % 3600) // 60
-                if days > 0:
-                    avg_response_text = f"{days}d {hours}h"
-                else:
-                    avg_response_text = f"{hours}h {minutes}m"
-            else:
-                avg_response_text = "N/A"
-            
-            # Update statistics labels
-            self.stats_labels["total_opportunities"].setText(str(total_opps))
-            self.stats_labels["active_opportunities"].setText(str(active_opps))
-            self.stats_labels["completed_opportunities"].setText(str(completed_opps))
-            self.stats_labels["avg_response_time"].setText(avg_response_text)
-            self.stats_labels["last_login"].setText(
-                self.current_user.last_login.strftime("%Y-%m-%d %H:%M") if self.current_user.last_login else "Never"
-            )
-            self.stats_labels["account_created"].setText(
-                self.current_user.created_at.strftime("%Y-%m-%d %H:%M") if self.current_user.created_at else "Unknown"
-            )
-            
-            # Style statistics labels
-            for label in self.stats_labels.values():
-                label.setStyleSheet("""
-                    color: white;
-                    font-size: 16px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                """)
-                
-        finally:
-            db.close()
-            
-    def save_changes(self):
-        """Save user profile changes"""
-        print("Starting save_changes process...")  # Debug print
-        db = None
-        try:
-            # Validate PIN change if attempted
-            if self.current_pin.text() or self.new_pin.text() or self.confirm_pin.text():
-                if not all([self.current_pin.text(), self.new_pin.text(), self.confirm_pin.text()]):
-                    QMessageBox.warning(self, "Error", "Please fill in all PIN fields to change PIN")
-                    return
-                    
-                if self.new_pin.text() != self.confirm_pin.text():
-                    QMessageBox.warning(self, "Error", "New PINs do not match")
-                    return
-                    
-                if hash_pin(self.current_pin.text()) != self.current_user.pin:
-                    QMessageBox.warning(self, "Error", "Current PIN is incorrect")
-                    return
-            
-            print("Opening database connection...")  # Debug print
-            db = SessionLocal()
-            
-            print("Querying user...")  # Debug print
-            user = db.query(User).filter(User.id == self.current_user.id).first()
-            if not user:
-                raise ValueError("User not found in database")
-            
-            # Update regular fields
-            print("Updating regular fields...")  # Debug print
-            for field_id, widget in self.fields.items():
-                try:
-                    if isinstance(widget, QLineEdit) and not widget.isReadOnly():
-                        setattr(user, field_id, widget.text())
-                    elif isinstance(widget, QComboBox):
-                        setattr(user, field_id, widget.currentText())
-                except Exception as field_error:
-                    print(f"Error updating field {field_id}: {str(field_error)}")
-                    raise
-            
-            # Update PIN if changed
-            if self.new_pin.text():
-                print("Updating PIN...")  # Debug print
-                user.pin = hash_pin(self.new_pin.text())
-            
-            # Update icon theme preference - handle separately from fields
-            print("Updating theme preference...")  # Debug print
+    def load_statistics(self) -> None:
+        """Load and display user statistics"""
+        with SessionLocal() as db:
             try:
-                old_theme = user.icon_theme
-                selected_theme = self.color_theme.currentText()
-                print(f"Changing theme from {old_theme} to {selected_theme}")  # Debug print
-                user.icon_theme = selected_theme
-            except Exception as theme_error:
-                print(f"Error updating theme: {str(theme_error)}")
-                raise
-            
-            print("Setting updated_at timestamp...")  # Debug print
-            user.updated_at = datetime.utcnow()
-            
-            print("Committing changes to database...")  # Debug print
-            db.commit()
-            
-            print("Showing success message...")  # Debug print
-            QMessageBox.information(self, "Success", "Profile updated successfully!")
-            
-            print("Emitting profile_updated signal...")  # Debug print
-            self.profile_updated.emit()
-            
-            print("Hiding profile window...")  # Debug print
-            self.hide()
-            
-        except Exception as e:
-            print(f"Profile update failed: {str(e)}")
-            if db:
-                print("Rolling back database changes...")  # Debug print
+                # Get opportunities created by the user
+                created_opps = db.query(Opportunity).filter(
+                    Opportunity.creator_id == self.current_user.id
+                ).all()
+                print(f"Created opportunities: {len(created_opps)}")
+                
+                # Get opportunities accepted by the user
+                accepted_opps = db.query(Opportunity).filter(
+                    Opportunity.acceptor_id == self.current_user.id
+                ).all()
+                print(f"Accepted opportunities: {len(accepted_opps)}")
+                
+                # Get active opportunities (both created and accepted)
+                active_opps = db.query(Opportunity).filter(
+                    (Opportunity.creator_id == self.current_user.id) | 
+                    (Opportunity.acceptor_id == self.current_user.id),
+                    Opportunity.status.ilike("new") |
+                    Opportunity.status.ilike("in progress") |
+                    Opportunity.status.ilike("needs info")
+                ).all()
+                print(f"Active opportunities: {len(active_opps)}")
+                
+                # Get completed opportunities with case-insensitive comparison
+                completed_opps = db.query(Opportunity).filter(
+                    (Opportunity.creator_id == self.current_user.id) | 
+                    (Opportunity.acceptor_id == self.current_user.id),
+                    Opportunity.status.ilike("completed")
+                ).all()
+                
+                # Debug logging for completed opportunities
+                print(f"Completed opportunities found: {len(completed_opps)}")
+                for opp in completed_opps:
+                    print(f"Completed opp - ID: {opp.id}, Status: {opp.status}, Creator: {opp.creator_id}, Acceptor: {opp.acceptor_id}")
+                
+                # Calculate statistics
+                total_created = len(created_opps)
+                total_accepted = len(accepted_opps)
+                total_active = len(active_opps)
+                total_completed = len(completed_opps)
+                
+                # Calculate average response time for opportunities
+                response_times = []
+                
+                # Include both accepted and completed opportunities for response time calculation
+                all_handled_opps = []
+                seen_ids = set()  # To avoid counting the same opportunity twice
+                
+                for opp in accepted_opps + completed_opps:
+                    if opp.id not in seen_ids:
+                        all_handled_opps.append(opp)
+                        seen_ids.add(opp.id)
+                
+                print(f"Total handled opportunities for response time: {len(all_handled_opps)}")
+                
+                for opp in all_handled_opps:
+                    # Skip if user is the creator (we want response time for tickets they handle)
+                    if opp.creator_id == self.current_user.id:
+                        continue
+                        
+                    # Calculate response time based on available timestamps
+                    created_time = opp.created_at
+                    response_time = None
+                    
+                    # Try different timestamps in order of preference
+                    if opp.started_at and created_time:
+                        response_time = opp.started_at - created_time
+                        print(f"Using started_at for ticket {opp.id}")
+                    elif opp.accepted_at and created_time:
+                        response_time = opp.accepted_at - created_time
+                        print(f"Using accepted_at for ticket {opp.id}")
+                    elif opp.status.lower() == "completed" and opp.completed_at and created_time:
+                        response_time = opp.completed_at - created_time
+                        print(f"Using completed_at for ticket {opp.id}")
+                    
+                    if response_time:
+                        hours = response_time.total_seconds() / 3600
+                        print(f"Response time for ticket {opp.id}: {hours:.1f} hours")
+                        response_times.append(hours)
+                
+                # Calculate average response time
+                if response_times:
+                    avg_response_time = sum(response_times) / len(response_times)
+                    print(f"Average response time: {avg_response_time:.1f} hours")
+                else:
+                    avg_response_time = 0
+                    print("No response times available")
+                
+                # Update statistics labels with better formatting
+                self.stats_labels['total_opportunities'].setText(f"{total_created:,}")
+                self.stats_labels['accepted_opportunities'].setText(f"{total_accepted:,}")
+                self.stats_labels['active_opportunities'].setText(f"{total_active:,}")
+                self.stats_labels['completed_opportunities'].setText(f"{total_completed:,}")
+                
+                # Format response time more readably
+                if avg_response_time > 24:
+                    days = int(avg_response_time / 24)
+                    hours = int(avg_response_time % 24)
+                    self.stats_labels['avg_response_time'].setText(f"{days:,}d {hours}h")
+                else:
+                    self.stats_labels['avg_response_time'].setText(f"{avg_response_time:.1f} hours")
+                
+                # Update last login and account creation time if available
+                if self.current_user.last_login:
+                    self.stats_labels['last_login'].setText(
+                        self.current_user.last_login.strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                if self.current_user.created_at:
+                    self.stats_labels['account_created'].setText(
+                        self.current_user.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                    )
+            except Exception as e:
+                print(f"Error loading statistics: {str(e)}")
+                print(traceback.format_exc())
+                
+    def save_changes(self) -> None:
+        """Save changes to the user profile"""
+        with SessionLocal() as db:
+            try:
+                # Get and validate PIN fields
+                current_pin = self.current_pin.text()
+                new_pin = self.new_pin.text()
+                
+                # Validate current PIN
+                if current_pin:
+                    if not hash_pin(current_pin) == self.current_user.pin:
+                        QMessageBox.warning(self, "Error", "Current PIN is incorrect")
+                        return
+                    
+                    # Update PIN
+                    self.current_user.pin = hash_pin(new_pin)
+                
+                # Get and validate other fields
+                department_field = self.fields.get("department", {}).get("field")
+                department_value: str = ""
+                if isinstance(department_field, QComboBox):
+                    department_value = department_field.currentText()
+                elif isinstance(department_field, QLineEdit):
+                    department_value = department_field.text()
+                
+                # Update user fields
+                self.current_user.department = department_value
+                
+                # Commit changes
+                db.commit()
+                print("Profile updated successfully")
+                
+                QMessageBox.information(self, "Success", "Profile updated successfully")
+                self.profile_updated.emit()
+                print("Profile updated signal emitted")
+                
+            except Exception as e:
+                print(f"Error saving changes: {str(e)}\nTraceback: {traceback.format_exc()}")
                 db.rollback()
-            QMessageBox.critical(self, "Error", f"Failed to update profile: {str(e)}\n\nPlease try again or contact support if the issue persists.")
-        finally:
-            if db:
-                print("Closing database connection...")  # Debug print
-                db.close()
-            
-    def showEvent(self, event):
-        """Update statistics when the profile is shown"""
-        super().showEvent(event)
-        self.load_statistics()
+                QMessageBox.warning(self, "Error", "Failed to update profile")
             

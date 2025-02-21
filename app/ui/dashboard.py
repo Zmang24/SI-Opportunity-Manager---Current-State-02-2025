@@ -346,93 +346,131 @@ class DashboardWidget(QWidget):
             self.assignment_filter.setCurrentText("All")
         self.apply_advanced_filters()
 
+    def get_filtered_opportunities(self, db):
+        """Get opportunities based on current filter and advanced filter settings"""
+        query = db.query(Opportunity)
+        
+        # Base filters
+        if self.current_filter == "new":
+            query = query.filter(Opportunity.status.ilike("new"))
+        elif self.current_filter == "in_progress":
+            query = query.filter(Opportunity.status.ilike("in progress"))
+        elif self.current_filter == "completed":
+            query = query.filter(Opportunity.status.ilike("completed"))
+        elif self.current_filter == "needs_info":
+            query = query.filter(Opportunity.status.ilike("needs info"))
+        elif self.current_filter == "my_tickets":
+            # Show tickets where user is either creator or acceptor
+            query = query.filter(
+                (Opportunity.creator_id == self.current_user.id) |
+                (Opportunity.acceptor_id == self.current_user.id)
+            )
+            
+            # Apply status filter if set
+            if hasattr(self, 'status_filter') and self.status_filter.currentText() != "All":
+                query = query.filter(Opportunity.status.ilike(self.status_filter.currentText()))
+                
+            # Apply assignment filter if set
+            if hasattr(self, 'assignment_filter'):
+                assignment = self.assignment_filter.currentText()
+                if assignment == "Created by me":
+                    query = query.filter(Opportunity.creator_id == self.current_user.id)
+                elif assignment == "Assigned to me":
+                    query = query.filter(Opportunity.acceptor_id == self.current_user.id)
+        
+        # Apply date filters if they exist and are set
+        if hasattr(self, 'date_from') and hasattr(self, 'date_to'):
+            start_date = self.date_from.date().toPyDate()
+            end_date = self.date_to.date().toPyDate()
+            if start_date and end_date:
+                query = query.filter(
+                    Opportunity.created_at.between(
+                        datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+                        datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+                    )
+                )
+        
+        return query.order_by(Opportunity.created_at.desc()).all()
+
     def load_opportunities(self):
-        """Schedule a deferred refresh to prevent rapid consecutive calls"""
-        if not self.is_loading:
-            self.refresh_timer.start(100)  # 100ms delay
+        """Load and display opportunities"""
+        if self.is_loading:
+            return
+            
+        self.is_loading = True
+        try:
+            # Clear existing widgets
+            self.cleanup_widgets()
+            
+            db = SessionLocal()
+            try:
+                # Get opportunities based on filter
+                opportunities = self.get_filtered_opportunities(db)
+                
+                # Mark new opportunities as viewed and update toolbar
+                parent = self.parent()
+                if parent and hasattr(parent, 'toolbar'):
+                    for opp in opportunities:
+                        if opp.status.lower() == "new":
+                            parent.toolbar.viewed_opportunities.add(opp.id)
+                    # Update notification badge
+                    parent.toolbar.check_updates()
+                
+                # Add opportunity widgets
+                for opportunity in opportunities:
+                    self.add_opportunity_widget(opportunity)
+                    
+                # Update scroll area contents
+                self.scroll_content.adjustSize()
+                
+            except Exception as e:
+                print(f"Error loading opportunities: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+            finally:
+                db.close()
+                
+        finally:
+            self.is_loading = False
 
     def do_refresh(self):
         """Actually perform the refresh"""
         if self.is_loading:
             return
-        
+            
         self.is_loading = True
+        db = SessionLocal()
         try:
-            # Clean up existing widgets
+            # Clear existing widgets
             self.cleanup_widgets()
             
-            db = SessionLocal()
-            try:
-                # Base query
-                query = db.query(Opportunity)
-                
-                print(f"\nDEBUG: Applying filter: {self.current_filter}")
-                
-                # Apply date range filter for all views
-                date_from = self.date_from.date().toPyDate()
-                date_to = self.date_to.date().toPyDate()
-                query = query.filter(
-                    Opportunity.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.utc),
-                    Opportunity.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=timezone.utc)
-                )
-                
-                # Apply specific filters based on current view
-                if self.current_filter == "my_tickets":
-                    print(f"DEBUG: Filtering for user {self.current_user.id}'s tickets")
-                    
-                    # Apply status filter
-                    status = self.status_filter.currentText()
-                    if status != "All":
-                        query = query.filter(Opportunity.status.ilike(status))
-                    
-                    # Apply assignment filter
-                    assignment = self.assignment_filter.currentText()
-                    if assignment == "Created by me":
-                        query = query.filter(Opportunity.creator_id == self.current_user.id)
-                    elif assignment == "Assigned to me":
-                        query = query.filter(Opportunity.acceptor_id == self.current_user.id)
-                    elif assignment == "Unassigned":
-                        query = query.filter(Opportunity.acceptor_id == None)
-                    else:  # "All"
-                        query = query.filter(
-                            (Opportunity.creator_id == self.current_user.id) |
-                            (Opportunity.acceptor_id == self.current_user.id)
-                        )
-                        
-                elif self.current_filter == "new":
-                    print("DEBUG: Filtering for new tickets")
-                    query = query.filter(
-                        Opportunity.status.ilike("New"),
-                        Opportunity.acceptor_id == None
-                    )
-                elif self.current_filter == "in_progress":
-                    print("DEBUG: Filtering for in progress tickets")
-                    query = query.filter(Opportunity.status.ilike("In Progress"))
-                elif self.current_filter == "completed":
-                    print("DEBUG: Filtering for completed tickets")
-                    query = query.filter(Opportunity.status.ilike("Completed"))
-                elif self.current_filter == "needs_info":
-                    print("DEBUG: Filtering for needs info tickets")
-                    query = query.filter(Opportunity.status.ilike("Needs Info"))
-                
-                # Get opportunities ordered by most recent first
-                opportunities = query.order_by(Opportunity.created_at.desc()).all()
-                print(f"DEBUG: Found {len(opportunities)} opportunities matching filter")
-                
+            # Get opportunities based on filter
+            opportunities = self.get_filtered_opportunities(db)
+            
+            # Mark new opportunities as viewed and update toolbar
+            parent = self.parent()
+            if parent and hasattr(parent, 'toolbar'):
                 for opp in opportunities:
-                    widget = self.add_opportunity_widget(opp)
-                    if widget:
-                        self.opportunity_widgets[str(opp.id)] = widget
-                    
-            finally:
-                db.close()
+                    if opp.status.lower() == "new":
+                        parent.toolbar.viewed_opportunities.add(opp.id)
+                # Update notification badge
+                parent.toolbar.check_updates()
+            
+            # Add opportunity widgets
+            for opportunity in opportunities:
+                self.add_opportunity_widget(opportunity)
                 
+            # Update scroll area contents
+            self.scroll_content.adjustSize()
+            
         except Exception as e:
             print(f"Error refreshing opportunities: {str(e)}")
-            print("Traceback:", traceback.format_exc())
+            import traceback
+            print(traceback.format_exc())
         finally:
             self.is_loading = False
-            
+            db.close()
+
     def add_opportunity_widget(self, opportunity):
         try:
             card = QFrame()

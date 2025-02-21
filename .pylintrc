@@ -1,0 +1,86 @@
+[MASTER]
+# Add any Python module names where warnings should be disabled
+ignore=CVS
+
+# Use multiple processes to speed up Pylint
+jobs=0
+
+# List of plugins (as comma separated values of python modules names) to load
+load-plugins=
+
+[MESSAGES CONTROL]
+# Disable specific warnings
+disable=
+    C0111, # missing-docstring
+    C0103, # invalid-name
+    C0303, # trailing-whitespace
+    C0330, # bad-continuation
+    C0326, # bad-whitespace
+    W0311, # bad-indentation
+    W0603, # global-statement
+    R0903, # too-few-public-methods
+    R0913, # too-many-arguments
+    R0914, # too-many-locals
+    W0621, # redefined-outer-name
+    W0703, # broad-except
+    W0702, # bare-except
+    W0612, # unused-variable
+    W0611, # unused-import
+    E1101, # no-member
+    C0111, # missing-docstring
+    C0116, # missing-function-docstring
+    C0115, # missing-class-docstring
+    C0114, # missing-module-docstring
+    R0902, # too-many-instance-attributes
+    R0904, # too-many-public-methods
+    R0912, # too-many-branches
+    R0915, # too-many-statements
+    W0401, # wildcard-import
+    W0614, # unused-wildcard-import
+    C0413, # wrong-import-position
+    C0412, # ungrouped-imports
+    W0511, # fixme
+
+[REPORTS]
+# Set the output format
+output-format=text
+
+# Include a brief explanation of each error
+msg-template={path}:{line}: [{msg_id}({symbol}), {obj}] {msg}
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=120
+
+# Maximum number of lines in a module
+max-module-lines=2000
+
+[BASIC]
+# Regular expression which should only match function or class names
+good-names=i,j,k,ex,Run,_,id,qt
+
+[MISCELLANEOUS]
+# List of note tags to take into consideration
+notes=FIXME,XXX,TODO
+
+[SIMILARITIES]
+# Minimum lines number of a similarity
+min-similarity-lines=4
+
+[TYPECHECK]
+# List of module names for which member attributes should not be checked
+ignored-modules=numpy,torch,cv2,PyQt5,PyQt5.QtCore,PyQt5.QtWidgets,PyQt5.QtGui
+
+# List of classes names for which member attributes should not be checked
+ignored-classes=numpy,torch,cv2,QMainWindow,QWidget,QDialog
+
+[VARIABLES]
+# A regular expression matching the name of dummy variables
+dummy-variables-rgx=_$|dummy
+
+# List of additional names to consider as builtins
+additional-builtins=
+
+[IMPORTS]
+# Allow wildcard imports from modules that define __all__
+allow-wildcard-with-all=yes 

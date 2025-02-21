@@ -1,7 +1,7 @@
 """add icon theme column
 
-Revision ID: 002
-Revises: 001
+Revision ID: 005
+Revises: 004
 Create Date: 2024-03-14
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '002'
-down_revision = '001'
+revision = '005'
+down_revision = '004'
 branch_labels = None
 depends_on = None
 
