@@ -1,27 +1,35 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QScrollArea, QFrame, QMessageBox, QComboBox, QDateEdit,
                            QDialog, QTextEdit)
-from PyQt5.QtCore import Qt, QTimer, QDate
+from PyQt5.QtCore import Qt, QTimer, QDate, QPoint
+from PyQt5.QtGui import QCloseEvent
 from app.database.connection import SessionLocal
-from app.models.models import Opportunity, Notification, ActivityLog
+from app.models.models import Opportunity, Notification, ActivityLog, User
 from app.config import STORAGE_DIR
 import os
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QPoint
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QEvent
+from typing import Dict, List, Optional, Union, Any, cast, TypeVar, Iterable
+from zoneinfo import ZoneInfo
+from sqlalchemy.orm import Session
+from sqlalchemy import Column, ColumnElement, String, DateTime, Interval
+from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.expression import cast as sql_cast
+
+T = TypeVar('T')
 
 class DashboardWidget(QWidget):
     refresh_needed = pyqtSignal()  # Signal to trigger refresh of other components
     
-    def __init__(self, current_user=None):
+    def __init__(self, current_user: Optional[User] = None):
         super().__init__()
         self.current_user = current_user
-        self.current_filter = "new"
-        self.opportunity_widgets = {}  # Change to dict to store by ID
-        self.is_loading = False
-        self.is_compact = True
+        self.current_filter: str = "new"
+        self.opportunity_widgets: Dict[str, QFrame] = {}  # Change to dict to store by ID
+        self.is_loading: bool = False
+        self.is_compact: bool = True
         self.refresh_timer = QTimer()
         self.refresh_timer.setSingleShot(True)
         self.refresh_timer.timeout.connect(self.do_refresh)
@@ -31,20 +39,20 @@ class DashboardWidget(QWidget):
         screen = QApplication.primaryScreen().availableGeometry()
         self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller default size
         
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         # Clean up before closing
         self.cleanup_widgets()
         event.ignore()
         self.hide()
         
-    def cleanup_widgets(self):
+    def cleanup_widgets(self) -> None:
         """Safely clean up widgets"""
         try:
             # Clear all widgets from the layout
             if hasattr(self, 'opportunities_layout'):
                 while self.opportunities_layout.count():
                     item = self.opportunities_layout.takeAt(0)
-                    if item.widget():
+                    if item and item.widget():
                         item.widget().deleteLater()
             
             # Clear the widget list
@@ -346,20 +354,20 @@ class DashboardWidget(QWidget):
             self.assignment_filter.setCurrentText("All")
         self.apply_advanced_filters()
 
-    def get_filtered_opportunities(self, db):
+    def get_filtered_opportunities(self, db: Session) -> List[Opportunity]:
         """Get opportunities based on current filter and advanced filter settings"""
         query = db.query(Opportunity)
         
         # Base filters
         if self.current_filter == "new":
-            query = query.filter(Opportunity.status.ilike("new"))
+            query = query.filter(sql_cast(Opportunity.status, String).ilike("new"))
         elif self.current_filter == "in_progress":
-            query = query.filter(Opportunity.status.ilike("in progress"))
+            query = query.filter(sql_cast(Opportunity.status, String).ilike("in progress"))
         elif self.current_filter == "completed":
-            query = query.filter(Opportunity.status.ilike("completed"))
+            query = query.filter(sql_cast(Opportunity.status, String).ilike("completed"))
         elif self.current_filter == "needs_info":
-            query = query.filter(Opportunity.status.ilike("needs info"))
-        elif self.current_filter == "my_tickets":
+            query = query.filter(sql_cast(Opportunity.status, String).ilike("needs info"))
+        elif self.current_filter == "my_tickets" and self.current_user:
             # Show tickets where user is either creator or acceptor
             query = query.filter(
                 (Opportunity.creator_id == self.current_user.id) |
@@ -368,7 +376,7 @@ class DashboardWidget(QWidget):
             
             # Apply status filter if set
             if hasattr(self, 'status_filter') and self.status_filter.currentText() != "All":
-                query = query.filter(Opportunity.status.ilike(self.status_filter.currentText()))
+                query = query.filter(sql_cast(Opportunity.status, String).ilike(self.status_filter.currentText()))
                 
             # Apply assignment filter if set
             if hasattr(self, 'assignment_filter'):
@@ -383,17 +391,17 @@ class DashboardWidget(QWidget):
             start_date = self.date_from.date().toPyDate()
             end_date = self.date_to.date().toPyDate()
             if start_date and end_date:
+                utc = ZoneInfo('UTC')
                 query = query.filter(
-                    Opportunity.created_at.between(
-                        datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
-                        datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
-                    )
-                )
+                    sql_cast(Opportunity.created_at, DateTime).between(
+                        datetime.combine(start_date, datetime.min.time(), tzinfo=utc),
+                        datetime.combine(end_date, datetime.max.time(), tzinfo=utc)
+                    ))
         
         return query.order_by(Opportunity.created_at.desc()).all()
 
     def load_opportunities(self):
-        """Load and display opportunities"""
+        """Load opportunities based on current filter"""
         if self.is_loading:
             return
             
@@ -421,7 +429,7 @@ class DashboardWidget(QWidget):
                     self.add_opportunity_widget(opportunity)
                     
                 # Update scroll area contents
-                self.scroll_content.adjustSize()
+                self.opportunities_container.adjustSize()
                 
             except Exception as e:
                 print(f"Error loading opportunities: {str(e)}")
@@ -461,7 +469,7 @@ class DashboardWidget(QWidget):
                 self.add_opportunity_widget(opportunity)
                 
             # Update scroll area contents
-            self.scroll_content.adjustSize()
+            self.opportunities_container.adjustSize()
             
         except Exception as e:
             print(f"Error refreshing opportunities: {str(e)}")
@@ -471,7 +479,8 @@ class DashboardWidget(QWidget):
             self.is_loading = False
             db.close()
 
-    def add_opportunity_widget(self, opportunity):
+    def add_opportunity_widget(self, opportunity: Opportunity) -> Optional[QFrame]:
+        """Add a widget for displaying an opportunity"""
         try:
             card = QFrame()
             card.setObjectName(f"card_{opportunity.id}")
@@ -968,162 +977,123 @@ class DashboardWidget(QWidget):
             print("Traceback:", traceback.format_exc())
             QMessageBox.critical(self, "Error", f"An error occurred while handling status change: {str(e)}")
 
-    def update_status(self, opportunity, new_status, comment=None):
+    def update_status(self, opportunity: Opportunity, new_status: str, comment: Optional[str] = None) -> None:
         """Update the status of an opportunity"""
         try:
-            now = datetime.now(timezone.utc)
+            utc = ZoneInfo('UTC')
+            now = datetime.now().replace(tzinfo=utc)
+            
+            # Debug prints
+            print(f"Updating status for opportunity {opportunity.id}")
+            print(f"New status: {new_status}")
+            print(f"Current user: {self.current_user.id if self.current_user else None}")
+            
             db = SessionLocal()
-            
-            print("\nDEBUG: Starting status update for opportunity", opportunity.id)
-            print("DEBUG: New status:", new_status)
-            print("DEBUG: Current user:", self.current_user.id)
-            
-            print("DEBUG: Querying for opportunity")
-            opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
-            
-            if not opp:
-                print("DEBUG: Opportunity not found")
-                return
-            
-            old_status = opp.status
-            opp.status = new_status
-            
-            # Initialize comments list if it doesn't exist
-            if not opp.comments:
-                opp.comments = []
-            
-            # Add the comment to the opportunity's comments
-            if comment:
-                comment_data = {
-                    'user_id': str(self.current_user.id),
-                    'user_name': f"{self.current_user.first_name} {self.current_user.last_name}",
-                    'text': comment,
-                    'timestamp': now.strftime("%Y-%m-%d %H:%M"),
-                    'type': new_status
-                }
-                opp.comments.append(comment_data)
-            
-            print("DEBUG: Found opportunity in database. Current status:", opp.status)
-            print("DEBUG: Status transition:", old_status, "->", new_status)
-            
-            # Handle status transition
-            if new_status.lower() == "in progress":
-                print("DEBUG: Setting acceptor for ticket going to in progress")
-                if not opp.acceptor_id:
-                    opp.acceptor_id = self.current_user.id
-                    # Notify creator that their ticket has been picked up
-                    notification = Notification(
-                        user_id=opp.creator_id,
-                        opportunity_id=opp.id,
-                        type="status_change",
-                        message=f"Your ticket '{opp.title}' has been picked up by {self.current_user.first_name} {self.current_user.last_name}",
-                        created_at=now,
-                        read=False
-                    )
-                    db.add(notification)
-                    print("DEBUG: Created notification for ticket pickup")
+            try:
+                # Get fresh opportunity from database
+                opportunity = cast(Opportunity, db.query(Opportunity).filter(Opportunity.id == opportunity.id).first())
+                if not opportunity:
+                    return
                 
-                # Set started_at when ticket enters "In Progress" for the first time
-                if not opp.started_at:
-                    print("DEBUG: Setting started_at timestamp")
-                    opp.started_at = now
-            
-            print("DEBUG: Handling '{}' status".format(new_status))
-            
-            if new_status.lower() == "completed":
-                print("DEBUG: Setting acceptor if not set")
-                if not opp.acceptor_id:
-                    opp.acceptor_id = self.current_user.id
-                
-                print("DEBUG: Setting completion time")
-                opp.completed_at = now
-                
-                print("DEBUG: Calculating response time (total time)")
-                if opp.created_at:
-                    opp.response_time = now - opp.created_at
-                
-                print("DEBUG: Calculating work time")
-                if opp.started_at:
-                    opp.work_time = now - opp.started_at
-                
-                print("DEBUG: Creating completion notification")
-                # Notify the creator of completion with comment if provided
-                completion_message = f"Your ticket '{opp.title}' has been completed by {self.current_user.first_name} {self.current_user.last_name}"
+                # Add comment if provided
                 if comment:
-                    completion_message += f"\nCompletion Notes: {comment}"
+                    comment_data = {
+                        "user_id": str(self.current_user.id) if self.current_user else None,
+                        "text": comment,
+                        "user_name": f"{self.current_user.first_name} {self.current_user.last_name}" if self.current_user else "Unknown"
+                    }
+                    if not getattr(opportunity, 'comments', None):
+                        setattr(opportunity, 'comments', [])
+                    getattr(opportunity, 'comments').append(comment_data)
                 
-                notification = Notification(
-                    user_id=opp.creator_id,
-                    opportunity_id=opp.id,
-                    type="completion",
-                    message=completion_message,
-                    created_at=now,
-                    read=False
-                )
-                db.add(notification)
-                print("DEBUG: Created completion notification")
-            
-            elif new_status.lower() == "needs info":
-                # Notify the creator that more information is needed
-                needs_info_message = f"Your ticket '{opp.title}' needs more information"
-                if comment:
-                    needs_info_message += f"\nDetails: {comment}"
+                # Debug prints
+                print(f"Old status: {str(opportunity.status)}")
+                print(f"Updating to: {new_status}")
                 
-                notification = Notification(
-                    user_id=opp.creator_id,
-                    opportunity_id=opp.id,
-                    type="needs_info",
-                    message=needs_info_message,
-                    created_at=now,
-                    read=False
-                )
-                db.add(notification)
-                print("DEBUG: Created needs info notification")
-            
-            # Create activity log for status change
-            if old_status != new_status:
-                activity_details = {
-                    "previous_status": old_status,
-                    "new_status": new_status
-                }
-                if comment:
-                    activity_details["comment"] = comment
+                # Update status and related fields
+                if new_status.lower() == "in progress":
+                    if not opportunity.acceptor_id and self.current_user:
+                        setattr(opportunity, 'acceptor_id', self.current_user.id)
+                    if not opportunity.started_at:
+                        setattr(opportunity, 'started_at', now)
+                    
+                    activity_details = {
+                        "action": "status_change",
+                        "old_status": str(opportunity.status),
+                        "new_status": new_status,
+                        "acceptor": f"{self.current_user.first_name} {self.current_user.last_name}" if self.current_user else None
+                    }
+                    
+                elif new_status.lower() == "completed":
+                    setattr(opportunity, 'completed_at', now)
+                    if opportunity.started_at:
+                        setattr(opportunity, 'response_time', sql_cast(now - opportunity.created_at, Interval))
+                        setattr(opportunity, 'work_time', sql_cast(now - opportunity.started_at, Interval))
+                    
+                    activity_details = {
+                        "action": "status_change",
+                        "old_status": str(opportunity.status),
+                        "new_status": new_status,
+                        "completed_by": f"{self.current_user.first_name} {self.current_user.last_name}" if self.current_user else None
+                    }
+                    
+                elif new_status.lower() == "needs info":
+                    activity_details = {
+                        "action": "needs_info",
+                        "old_status": str(opportunity.status),
+                        "new_status": new_status,
+                        "requested_by": f"{self.current_user.first_name} {self.current_user.last_name}" if self.current_user else None,
+                        "info_needed": comment
+                    }
+                    
+                else:
+                    activity_details = {
+                        "action": "status_change",
+                        "old_status": str(opportunity.status),
+                        "new_status": new_status
+                    }
                 
-                activity = ActivityLog(
-                    user_id=self.current_user.id,
-                    opportunity_id=opp.id,
-                    action="status_change",
-                    details=activity_details,
-                    created_at=now
+                # Create activity log entry
+                activity_log = ActivityLog(
+                    opportunity_id=str(opportunity.id),
+                    user_id=str(self.current_user.id) if self.current_user else None,
+                    activity_type="status_change",
+                    details=activity_details
                 )
-                db.add(activity)
-                print("DEBUG: Created activity log for status change")
-            
-            opp.updated_at = now
-            
-            print("DEBUG: Committing changes to database")
-            db.commit()
-            print("DEBUG: Changes committed successfully")
-            
-            # Emit signal to refresh other components
-            self.refresh_needed.emit()
-            
-            # Refresh the dashboard
-            self.do_refresh()
-            
+                db.add(activity_log)
+                
+                # Update opportunity status and timestamp
+                setattr(opportunity, 'status', new_status)
+                setattr(opportunity, 'updated_at', now)
+                
+                db.commit()
+                
+                # Emit signal to refresh other components
+                self.refresh_needed.emit()
+                
+                # Refresh the dashboard
+                self.load_opportunities()
+                
+            except Exception as e:
+                print(f"ERROR in update_status: {str(e)}")
+                print("Traceback:", traceback.format_exc())
+                db.rollback()
+                QMessageBox.critical(self, "Error", f"An error occurred while updating the ticket status: {str(e)}")
+            finally:
+                db.close()
         except Exception as e:
             print(f"ERROR in update_status: {str(e)}")
             print("Traceback:", traceback.format_exc())
-            db.rollback()
-            QMessageBox.critical(self, "Error", f"An error occurred while updating the ticket status: {str(e)}")
-        finally:
-            db.close()
 
-    def format_duration(self, duration):
+    def format_duration(self, duration: Optional[timedelta]) -> str:
         """Format a timedelta into a readable string with error handling"""
         try:
             if duration is None:
                 return "N/A"
+            
+            if isinstance(duration, ColumnElement):
+                # If it's a SQLAlchemy column, we need to get its Python value
+                duration = cast(timedelta, duration)
             
             total_seconds = int(duration.total_seconds())
             days = total_seconds // 86400
@@ -1131,7 +1101,7 @@ class DashboardWidget(QWidget):
             minutes = (total_seconds % 3600) // 60
             seconds = total_seconds % 60
             
-            parts = []
+            parts: List[str] = []
             if days > 0:
                 parts.append(f"{days}d")
             if hours > 0 or days > 0:  # Show hours if there are days
@@ -1141,7 +1111,7 @@ class DashboardWidget(QWidget):
             if not parts or seconds > 0:  # Always show seconds if no larger units or if there are seconds
                 parts.append(f"{seconds:02d}s")
             
-            return " ".join(parts)
+            return " ".join(cast(Iterable[str], parts))
             
         except Exception as e:
             print(f"Error formatting duration: {str(e)}")

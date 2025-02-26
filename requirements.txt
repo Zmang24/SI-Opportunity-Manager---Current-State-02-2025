@@ -15,4 +15,9 @@ python-dateutil>=2.8.2
 pillow>=9.0.0  # For image handling
 win10toast>=0.9.0  # For Windows notifications
 pywin32>=305  # Required for Windows notifications and system tray integration
-openpyxl==3.1.2 
+openpyxl==3.1.2
+
+# WebSocket
+fastapi>=0.68.0
+uvicorn>=0.15.0
+websockets>=10.0 

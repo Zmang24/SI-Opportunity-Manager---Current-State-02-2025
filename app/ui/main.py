@@ -6,7 +6,15 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QPushButton, QLabel, QStackedWidget, QSystemTrayIcon,
                            QMenu, QStyle, QHBoxLayout, QFrame, QSlider, QDialog, QMessageBox)
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer, QSettings
-from PyQt5.QtGui import QIcon, QPixmap, QImage, QTransform, QPainter, QColor, QLinearGradient
+from PyQt5.QtGui import (QIcon, QPixmap, QImage, QTransform, QPainter, QColor, QLinearGradient,
+                      QPaintEvent, QMouseEvent, QResizeEvent, QMoveEvent, QCloseEvent)
+from app.ui.qt_types import (
+    AlignCenter, FramelessWindowHint, WindowStaysOnTopHint, Tool, NoDropShadowWindowHint,
+    WA_TranslucentBackground, WA_ShowWithoutActivating, WA_AlwaysShowToolTips,
+    Horizontal, Vertical, SmoothTransformation, KeepAspectRatio, IgnoreAspectRatio,
+    NoPen, WindowMinimized, AA_EnableHighDpiScaling, AA_UseHighDpiPixmaps,
+    AA_UseStyleSheetPropagationInWidgetStyles, AA_DontCreateNativeWidgetSiblings
+)
 from app.ui.dashboard import DashboardWidget
 from app.ui.opportunity_form import OpportunityForm
 from app.ui.auth import AuthWidget
@@ -20,14 +28,34 @@ from datetime import datetime, timedelta, timezone
 from win10toast import ToastNotifier
 from sqlalchemy import and_, or_
 import traceback
-from typing import Optional, Dict, List, Union, cast
+from typing import Optional, Dict, List, Union, cast, Any, Protocol, TypeVar, TYPE_CHECKING
+import asyncio
+import websockets
+import json
+
+T = TypeVar('T')
+
+if TYPE_CHECKING:
+    from PyQt5.QtCore import QObject
+    from PyQt5.QtWidgets import QWidget as QWidgetType
+
+class DatabaseSession(Protocol):
+    def query(self, model: type[T]) -> 'Query[T]': ...
+    def add(self, obj: Any) -> None: ...
+    def commit(self) -> None: ...
+    def close(self) -> None: ...
+
+class Query(Protocol[T]):
+    def filter(self, *criterion: Any) -> 'Query[T]': ...
+    def first(self) -> Optional[T]: ...
+    def all(self) -> list[T]: ...
 
 class NotificationBadge(QLabel):
     """A badge showing the number of unread notifications"""
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional['QWidgetType'] = None) -> None:
         super().__init__(parent)
-        self.setAlignment(Qt.AlignCenter)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAlignment(AlignCenter)
+        self.setAttribute(WA_TranslucentBackground)
         
         # Slightly larger size for better visibility
         self.setFixedSize(22, 22)
@@ -50,18 +78,27 @@ class NotificationBadge(QLabel):
         """)
         print("DEBUG: NotificationBadge created with size:", self.size())
 
-class DragHandle(QWidget):
-    def __init__(self, parent=None, orientation=Qt.Horizontal):
-        super().__init__(parent)
-        self.orientation = orientation
-        self.setMouseTracking(True)
+    def paintEvent(self, event: QPaintEvent) -> None:
+        """Paint the notification badge with custom styling"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
         
-        # Set fixed size based on orientation
-        if orientation == Qt.Horizontal:
-            self.setFixedSize(40, 10)
-        else:
-            self.setFixedSize(10, 40)
-            
+        # Draw red circle background
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(255, 0, 0))
+        painter.drawEllipse(0, 0, self.width(), self.height())
+        
+        # Draw notification count text
+        painter.setPen(QColor(255, 255, 255))
+        painter.drawText(self.rect(), AlignCenter, self.text())
+
+class DragHandle(QWidget):
+    def __init__(self, parent: Optional['QWidgetType'] = None, orientation: Qt.Orientation = Qt.Horizontal) -> None:
+        super().__init__(parent)
+        self._orientation = orientation
+        self.setFixedSize(8, 30 if orientation == Qt.Horizontal else 8)
+        self.setCursor(Qt.SizeHorCursor if orientation == Qt.Horizontal else Qt.SizeVerCursor)
+        
         # Style with a semi-transparent background
         self.setStyleSheet("""
             QWidget {
@@ -73,28 +110,29 @@ class DragHandle(QWidget):
             }
         """)
         
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
         # Draw handle dots
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 100))
+        painter.setBrush(QColor(200, 200, 200))
         
-        if self.orientation == Qt.Horizontal:
+        if self._orientation == Qt.Horizontal:
             # Draw three horizontal dots
             for i in range(3):
-                painter.drawEllipse(10 + (i * 10), 3, 4, 4)
+                painter.drawEllipse(2, 8 + i * 7, 4, 4)
         else:
             # Draw three vertical dots
             for i in range(3):
-                painter.drawEllipse(3, 10 + (i * 10), 4, 4)
+                painter.drawEllipse(8 + i * 7, 2, 4, 4)
 
 class PeekButton(QPushButton):
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional['QWidgetType'] = None) -> None:
         super().__init__(parent)
-        self.setFixedSize(30, 30)
+        self.setFixedSize(16, 16)
         self.setCursor(Qt.PointingHandCursor)
+        self._expanded = False
         self.setStyleSheet("""
             QPushButton {
                 background-color: rgba(255, 255, 255, 0.1);
@@ -109,11 +147,29 @@ class PeekButton(QPushButton):
         """)
         self.setText("◀")  # Left arrow for collapsed state
 
-    def toggle_state(self, is_expanded):
-        self.setText("▶" if is_expanded else "◀")
+    def toggle_state(self, is_expanded: bool) -> None:
+        """Toggle the peek button state"""
+        self._expanded = is_expanded
+        self.update()
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        """Paint the peek button with custom styling"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Draw arrow
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(200, 200, 200))
+        
+        if self._expanded:
+            points = [QPoint(4, 12), QPoint(12, 12), QPoint(8, 4)]
+        else:
+            points = [QPoint(4, 4), QPoint(12, 4), QPoint(8, 12)]
+            
+        painter.drawPolygon(*points)
 
 class FloatingToolbar(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional['QWidgetType'] = None) -> None:
         super().__init__(parent)
         self.setWindowFlags(
             Qt.Tool |
@@ -1154,113 +1210,90 @@ class LoadingOverlay(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self, parent: Optional[QMainWindow] = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle('SI Opportunity Manager')
         
-        # Load and set the window icon
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                'SI Opportunity Manager LOGO.png.png')
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
+        # Initialize asyncio loop
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         
+        # Create timer for asyncio events
+        self.asyncio_timer = QTimer(self)
+        self.asyncio_timer.timeout.connect(self._process_asyncio_events)
+        self.asyncio_timer.start(10)  # Process every 10ms
+        
+        # Initialize other attributes
         self.current_user = None
         self.opportunity_form = None
-        self.dashboard = None
         self.management_portal = None
         self.profile = None
-        self.auth_widget = None
-        self.account_creation = None
+        self.websocket = None
+        self.websocket_task = None
+        self.notification_queue = asyncio.Queue()
+        
+        # Initialize UI
         self.initUI()
         
-    def initUI(self):
-        # Create central widget and layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
-        
-        # Add logo at the top
-        logo_label = QLabel()
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                'SI Opportunity Manager LOGO.png.png')
-        if os.path.exists(icon_path):
-            pixmap = QPixmap(icon_path)
-            scaled_pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo_label.setPixmap(scaled_pixmap)
-            logo_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(logo_label)
-        
-        # Create stacked widget for different pages
-        self.stacked_widget = QStackedWidget()
-        layout.addWidget(self.stacked_widget)
-        
-        # Create floating toolbar (but don't show it yet)
-        self.toolbar = FloatingToolbar(self)
-        
-        # Initialize windows (hidden initially)
-        self.auth = AuthWidget()
-        self.auth.authenticated.connect(self.on_authentication)
-        self.auth.create_account_requested.connect(self.show_account_creation)
-        
-        self.account_creation = AccountCreationWidget()
-        self.account_creation.account_created.connect(self.on_account_created)
-        
-        # Initialize dashboard with None user (will be set after authentication)
-        self.dashboard = DashboardWidget()
-        self.opportunity_form = None
-        self.settings = SettingsWidget()
-        self.profile = None
-        self.management_portal = None
-        
-        # Show auth widget first
+        # Show auth widget
         self.auth.show()
+        
+    def _process_asyncio_events(self):
+        """Process pending asyncio events"""
+        try:
+            self.loop.stop()
+            self.loop.run_forever()
+        except Exception as e:
+            print(f"Error processing asyncio events: {e}")
+            
+    def closeEvent(self, event):
+        """Handle application close event"""
+        try:
+            # Stop asyncio timer and close loop
+            self.asyncio_timer.stop()
+            pending = asyncio.all_tasks(self.loop)
+            for task in pending:
+                task.cancel()
+            self.loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            self.loop.close()
+            
+            # Hide all windows
+            if hasattr(self, 'toolbar'):
+                self.toolbar.hide()
+            if hasattr(self, 'dashboard'):
+                self.dashboard.hide()
+            if hasattr(self, 'opportunity_form'):
+                self.opportunity_form.hide()
+            if hasattr(self, 'settings'):
+                self.settings.hide()
+            if hasattr(self, 'auth'):
+                self.auth.hide()
+            if hasattr(self, 'account_creation'):
+                self.account_creation.hide()
+            if hasattr(self, 'management_portal'):
+                self.management_portal.hide()
+                
+            # Accept the close event
+            event.accept()
+        except Exception as e:
+            print(f"Error during close: {str(e)}")
+            event.accept()
 
-    def show_opportunity_form(self):
-        # Create form if it doesn't exist
-        if not self.opportunity_form:
-            self.opportunity_form = OpportunityForm(str(self.current_user.id))
-            # Connect the opportunity created signal to the toolbar
-            self.opportunity_form.opportunity_created.connect(self.on_new_opportunity)
-        self.opportunity_form.show()
-        self.opportunity_form.raise_()
-        self.opportunity_form.activateWindow()
-        
-    def show_dashboard(self):
-        """Show and refresh dashboard"""
+    async def init_websocket(self):
+        """Initialize WebSocket connection"""
         if not self.current_user:
-            QMessageBox.warning(self, "Error", "Please log in first")
             return
             
-        self.dashboard.show()
-        self.dashboard.raise_()
-        self.dashboard.activateWindow()
-        self.dashboard.load_opportunities()
-        if hasattr(self, 'toolbar'):
-            self.toolbar.clear_notifications()
-        
-    def show_account_creation(self):
-        self.account_creation.show()
-        self.account_creation.raise_()
-        self.account_creation.activateWindow()
-        
-    def show_management_portal(self):
-        """Show management portal for admins and managers"""
-        if not self.current_user or self.current_user.role not in ["admin", "manager"]:
-            QMessageBox.warning(self, "Access Denied", "You don't have permission to access the management portal.")
-            return
+        try:
+            self.websocket = await websockets.connect(
+                f"ws://localhost:8000/ws/notifications/{self.current_user.id}"
+            )
+            self.websocket_task = asyncio.create_task(self.handle_notifications())
+        except Exception as e:
+            print(f"Error initializing WebSocket: {e}")
             
-        if not self.management_portal:
-            self.management_portal = ManagementPortal(self.current_user, self)
-            self.management_portal.refresh_needed.connect(self.on_management_refresh)
-            
-        self.management_portal.show()
-        self.management_portal.raise_()
-        self.management_portal.activateWindow()
-        self.management_portal.load_data()
-        
-    def on_management_refresh(self):
-        """Handle refresh requests from management portal"""
-        if hasattr(self, 'dashboard'):
-            self.dashboard.load_opportunities()
-            
+    def start_websocket(self):
+        """Start WebSocket connection in the event loop"""
+        if self.current_user:
+            asyncio.run_coroutine_threadsafe(self.init_websocket(), self.loop)
+
     def on_authentication(self, user):
         """Handle successful authentication"""
         print(f"DEBUG: User authenticated - Role: {user.role}")
@@ -1269,43 +1302,12 @@ class MainWindow(QMainWindow):
         # Hide auth widget immediately
         self.auth.hide()
         
-        # Create loading overlay without parent to make it independent
-        loading = LoadingOverlay()
-        loading.show()
-        loading.raise_()  # Ensure it's on top
+        # Create toolbar
+        self.toolbar = FloatingToolbar(self)
+        self.toolbar.show()
         
-        def create_toolbar():
-            # Delete existing toolbar if it exists
-            if hasattr(self, 'toolbar'):
-                print("DEBUG: Deleting existing toolbar")
-                self.toolbar.hide()
-                self.toolbar.deleteLater()
-                
-            # Create new toolbar
-            print("DEBUG: Creating new toolbar")
-            print(f"DEBUG: Current user before toolbar creation: {self.current_user.role}")
-            self.toolbar = FloatingToolbar(self)
-            if not self.toolbar.parent():
-                print("DEBUG: Warning - Toolbar parent not set, setting it now")
-                self.toolbar.setParent(self)
-            print(f"DEBUG: Toolbar parent: {self.toolbar.parent()}")
-            print(f"DEBUG: Toolbar current_user: {self.toolbar.parent().current_user if self.toolbar.parent() else None}")
-                
-            # Set the user's theme preference
-            print(f"Setting initial theme to: {user.icon_theme}")
-            self.toolbar.update_theme(user.icon_theme)
-            
-            # Show toolbar
-            self.toolbar.show()
-            self.toolbar.raise_()
-            self.toolbar.load_position()
-            
-            # Hide loading overlay
-            loading.hide()
-            loading.deleteLater()
-        
-        # Add a small delay before creating the toolbar
-        QTimer.singleShot(100, create_toolbar)
+        # Start WebSocket connection
+        self.start_websocket()
         
         # Recreate dashboard with current user
         if hasattr(self, 'dashboard'):
@@ -1336,13 +1338,10 @@ class MainWindow(QMainWindow):
                 db.commit()
             
             # Start notification check timer
-            self.notification_timer = QTimer(self)
-            self.notification_timer.timeout.connect(self.toolbar.check_updates)
-            self.notification_timer.start(30000)  # Check every 30 seconds
-            
-            # Do an immediate check for notifications
             self.toolbar.check_updates()
             
+        except Exception as e:
+            print(f"Error initializing notifications: {e}")
         finally:
             db.close()
 
@@ -1403,84 +1402,103 @@ class MainWindow(QMainWindow):
             db.close()
             print("Profile update completed")
 
-    def closeEvent(self, event):
-        """Handle application close event"""
-        try:
-            # Hide all windows
-            if hasattr(self, 'toolbar'):
-                self.toolbar.hide()
-            if hasattr(self, 'dashboard'):
-                self.dashboard.hide()
-            if hasattr(self, 'opportunity_form'):
-                self.opportunity_form.hide()
-            if hasattr(self, 'settings'):
-                self.settings.hide()
-            if hasattr(self, 'auth'):
-                self.auth.hide()
-            if hasattr(self, 'account_creation'):
-                self.account_creation.hide()
-            if hasattr(self, 'management_portal'):
-                self.management_portal.hide()
-                
-            # Accept the close event
-            event.accept()
-        except Exception as e:
-            print(f"Error during close: {str(e)}")
-            event.accept()
+    def show_opportunity_form(self):
+        # Create form if it doesn't exist
+        if not self.opportunity_form:
+            self.opportunity_form = OpportunityForm(str(self.current_user.id))
+            # Connect the opportunity created signal to the toolbar
+            self.opportunity_form.opportunity_created.connect(self.on_new_opportunity)
+        self.opportunity_form.show()
+        self.opportunity_form.raise_()
+        self.opportunity_form.activateWindow()
+        
+    def show_dashboard(self):
+        """Show and refresh dashboard"""
+        if not self.current_user:
+            QMessageBox.warning(self, "Error", "Please log in first")
+            return
             
-    def changeEvent(self, event):
-        """Handle window state changes"""
-        try:
-            if event.type() == 105:  # WindowStateChange event type
-                if self.windowState() & Qt.WindowMinimized:
-                    # Minimize all windows
-                    if hasattr(self, 'toolbar'):
-                        self.toolbar.hide()
-                    if hasattr(self, 'dashboard'):
-                        self.dashboard.hide()
-                    if hasattr(self, 'opportunity_form'):
-                        self.opportunity_form.hide()
-                    if hasattr(self, 'settings'):
-                        self.settings.hide()
-                    if hasattr(self, 'auth'):
-                        self.auth.hide()
-                    if hasattr(self, 'account_creation'):
-                        self.account_creation.hide()
-                    if hasattr(self, 'management_portal'):
-                        self.management_portal.hide()
-            super().changeEvent(event)
-        except Exception as e:
-            print(f"Error during window state change: {str(e)}")
+        self.dashboard.show()
+        self.dashboard.raise_()
+        self.dashboard.activateWindow()
+        self.dashboard.load_opportunities()
+        if hasattr(self, 'toolbar'):
+            self.toolbar.clear_notifications()
+        
+    def show_account_creation(self):
+        self.account_creation.show()
+        self.account_creation.raise_()
+        self.account_creation.activateWindow()
+        
+    def show_management_portal(self):
+        """Show management portal for admins and managers"""
+        if not self.current_user or self.current_user.role not in ["admin", "manager"]:
+            QMessageBox.warning(self, "Access Denied", "You don't have permission to access the management portal.")
+            return
             
-    def moveEvent(self, event):
-        """Handle window move events"""
-        try:
-            super().moveEvent(event)
-        except Exception as e:
-            print(f"Error during window move: {str(e)}")
+        if not self.management_portal:
+            self.management_portal = ManagementPortal(self.current_user, self)
+            self.management_portal.refresh_needed.connect(self.on_management_refresh)
             
-    def resizeEvent(self, event):
-        """Handle window resize events"""
-        try:
-            super().resizeEvent(event)
-        except Exception as e:
-            print(f"Error during window resize: {str(e)}")
+        self.management_portal.show()
+        self.management_portal.raise_()
+        self.management_portal.activateWindow()
+        self.management_portal.load_data()
+        
+    def on_management_refresh(self):
+        """Handle refresh requests from management portal"""
+        if hasattr(self, 'dashboard'):
+            self.dashboard.load_opportunities()
             
-    def event(self, event):
-        """Handle all other window events"""
-        try:
-            return super().event(event)
-        except Exception as e:
-            print(f"Error handling window event: {str(e)}")
-            return True  # Prevent event propagation on error
+    def initUI(self):
+        # Create central widget and layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+        
+        # Add logo at the top
+        logo_label = QLabel()
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                'SI Opportunity Manager LOGO.png.png')
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            scaled_pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+            logo_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(logo_label)
+        
+        # Create stacked widget for different pages
+        self.stacked_widget = QStackedWidget()
+        layout.addWidget(self.stacked_widget)
+        
+        # Initialize windows (hidden initially)
+        self.auth = AuthWidget()
+        self.auth.authenticated.connect(self.on_authentication)
+        self.auth.create_account_requested.connect(self.show_account_creation)
+        
+        self.account_creation = AccountCreationWidget()
+        self.account_creation.account_created.connect(self.on_account_created)
+        
+        # Initialize dashboard with None user (will be set after authentication)
+        self.dashboard = DashboardWidget()
+        self.opportunity_form = None
+        self.settings = SettingsWidget()
+        self.profile = None
+        self.management_portal = None
+        
+        # Show auth widget first
+        self.auth.show()
 
 def main():
     # Enable High DPI scaling before creating QApplication
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     
+    # Create application instance
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    
+    # Set application style
+    app.setStyle("Fusion")
     
     # Enable additional attributes after QApplication creation
     QApplication.setAttribute(Qt.AA_UseStyleSheetPropagationInWidgetStyles)
@@ -1506,7 +1524,11 @@ def main():
         }
     """)
     
+    # Create and show main window
     window = MainWindow()
+    window.show()
+    
+    # Start the event loop
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
