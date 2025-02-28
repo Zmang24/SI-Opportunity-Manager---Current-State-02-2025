@@ -14,14 +14,7 @@ if not DATABASE_URL:
 # Create engine with enhanced configuration for Neon
 engine = create_engine(
     DATABASE_URL,
-    connect_args={
-        "sslmode": "require",
-        "connect_timeout": 10,
-        "keepalives": 1,
-        "keepalives_idle": 30,
-        "keepalives_interval": 10,
-        "keepalives_count": 5
-    },
+    # Note: sslmode is included in the connection string, not in connect_args
     pool_size=5,  # Maximum number of connections in the pool
     max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
     pool_timeout=30,  # Timeout for getting a connection from the pool

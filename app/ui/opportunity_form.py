@@ -4,40 +4,22 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                            QCheckBox, QGroupBox, QDialog, QFormLayout)
 from PyQt5.QtCore import Qt, pyqtSignal
 from app.database.connection import SessionLocal
-from app.models.models import Opportunity, Vehicle, AdasSystem, File, User
+from app.models.models import Opportunity, Vehicle, AdasSystem, File, User, Notification
 from app.config import STORAGE_DIR
 import os
 import mimetypes
 from datetime import datetime
 import shutil
 import hashlib
+from app.services.supabase_storage import SupabaseStorageService
 
 def calculate_file_hash(file_path):
     """Calculate SHA-256 hash of a file"""
-    sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
+    return SupabaseStorageService.calculate_file_hash(file_path)
 
 def store_file(source_path, file_hash):
-    """Store file in storage directory with hash-based name"""
-    # Create year/month based subdirectories
-    date_dir = datetime.now().strftime('%Y/%m')
-    target_dir = os.path.join(STORAGE_DIR, date_dir)
-    os.makedirs(target_dir, exist_ok=True)
-    
-    # Get file extension
-    _, ext = os.path.splitext(source_path)
-    
-    # Create target path with hash name
-    target_path = os.path.join(target_dir, f"{file_hash}{ext}")
-    
-    # Copy file to storage
-    shutil.copy2(source_path, target_path)
-    
-    # Return relative storage path
-    return os.path.relpath(target_path, STORAGE_DIR)
+    """Store file in Supabase storage with hash-based name"""
+    return SupabaseStorageService.store_file(source_path, file_hash)
 
 class CustomVehicleDialog(QDialog):
     def __init__(self, parent=None):
@@ -932,6 +914,19 @@ class OpportunityForm(QWidget):
             
             db.add(new_opp)
             db.flush()  # Get the ID without committing
+            
+            # Create notifications for all users except the creator
+            all_users = db.query(User).filter(User.id != self.current_user_id).all()
+            for user in all_users:
+                notification = Notification(
+                    user_id=user.id,
+                    opportunity_id=new_opp.id,
+                    type="new_opportunity",
+                    message=f"New opportunity created: {new_opp.title} - {new_opp.display_title}",
+                    created_at=datetime.utcnow(),
+                    read=False
+                )
+                db.add(notification)
             
             # Handle file attachments
             for attachment in self.attachments:

@@ -30,7 +30,6 @@ from sqlalchemy import and_, or_
 import traceback
 from typing import Optional, Dict, List, Union, cast, Any, Protocol, TypeVar, TYPE_CHECKING
 import asyncio
-import websockets
 import json
 
 T = TypeVar('T')
@@ -196,6 +195,7 @@ class FloatingToolbar(QWidget):
         self.drag_position = None
         self.notification_count = 0
         self.last_checked_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+        self.last_reminder_time = datetime.now(timezone.utc)  # Initialize last reminder time
         self.viewed_opportunities = set()
         self.viewed_notifications = set()
         self.toaster = ToastNotifier()
@@ -214,9 +214,26 @@ class FloatingToolbar(QWidget):
             "close": "#FF0000"  # Keep red
         }
         
-        # Initialize with default theme
-        self.current_theme = "Rainbow Animation"
-        self.color_timer.start(50)  # Start with rainbow animation by default
+        # Initialize with user's theme if available, otherwise use default
+        self.current_theme = "Rainbow Animation"  # Default theme
+        
+        # Load user's theme preference if parent has a current_user with icon_theme
+        if parent and hasattr(parent, 'current_user') and hasattr(parent.current_user, 'icon_theme') and parent.current_user.icon_theme:
+            print(f"Loading user's theme preference: {parent.current_user.icon_theme}")
+            self.current_theme = parent.current_user.icon_theme
+            
+        # Apply the theme
+        if self.current_theme == "Rainbow Animation":
+            self.color_timer.start(50)  # Start with rainbow animation
+        else:
+            # Apply static theme
+            print(f"Applying user's saved theme: {self.current_theme}")
+            self.apply_static_theme()
+
+        # Initialize notification check timer
+        self.notification_timer = QTimer(self)
+        self.notification_timer.timeout.connect(self.check_updates)
+        self.notification_timer.start(30000)  # Check every 30 seconds
 
     def initUI(self):
         # Main layout
@@ -711,7 +728,7 @@ class FloatingToolbar(QWidget):
                 Opportunity.creator_id != str(self.parent().current_user.id)  # Don't notify for own tickets
             ).all()
             
-            # Count unviewed opportunities (only those that haven't been viewed)
+            # Get opportunities that haven't been viewed
             unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
             print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed opportunities")
             
@@ -732,22 +749,34 @@ class FloatingToolbar(QWidget):
                 self.notification_count = total_count
                 self.update_notification_badge()
             
-            # Show aggregate notification for new opportunities only if there are new ones since last check
-            if len(unviewed_opportunities) > 0 and current_time > self.last_checked_time:
-                self.show_windows_notification(
-                    "New Opportunities",
-                    f"There are {len(unviewed_opportunities)} new opportunities in the dashboard"
-                )
+            # Show notifications for new opportunities since last check
+            for opp in new_opportunities:
+                if opp.id not in self.viewed_opportunities and opp.created_at > self.last_checked_time:
+                    # Show detailed notification for this new opportunity
+                    self.show_windows_notification(
+                        "New SI Opportunity",
+                        f"Ticket: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}..."
+                    )
+                    # Mark as viewed
+                    self.viewed_opportunities.add(opp.id)
             
-            # Show aggregate notification for new notifications only if there are new ones since last check
-            if len(new_notifications) > 0 and current_time > self.last_checked_time:
+            # Show periodic reminder of total unviewed opportunities (every 5 minutes)
+            if total_count > 0 and (current_time - self.last_reminder_time).total_seconds() > 300:
                 self.show_windows_notification(
-                    "New Notifications",
-                    f"You have {len(new_notifications)} new notifications"
+                    "Reminder",
+                    f"You have {total_count} unviewed items in your dashboard"
                 )
-                # Add all new notifications to viewed set
+                self.last_reminder_time = current_time
+            
+            # Show notifications for other notification types
+            if len(new_notifications) > 0:
                 for notif in new_notifications:
-                    self.viewed_notifications.add(notif.id)
+                    if notif.id not in self.viewed_notifications:
+                        self.show_windows_notification(
+                            "New Notification",
+                            notif.message
+                        )
+                        self.viewed_notifications.add(notif.id)
             
             # Update last check time only for future notifications
             self.last_checked_time = current_time
@@ -765,16 +794,24 @@ class FloatingToolbar(QWidget):
                 self.toaster = ToastNotifier()
             
             # Show the notification in a non-blocking way
-            self.toaster.show_toast(
-                title,
-                message,
-                duration=5,
-                threaded=True,
-                icon_path=None  # Let Windows use the app's default icon
-            )
+            try:
+                self.toaster.show_toast(
+                    title,
+                    message,
+                    duration=5,
+                    threaded=True,
+                    icon_path=None  # Let Windows use the app's default icon
+                )
+            except TypeError as te:
+                # Handle the WPARAM error that occurs on some Windows systems
+                print(f"Windows notification error (non-critical): {str(te)}")
+                # Fall back to console notification
+                print(f"NOTIFICATION: {title} - {message}")
+                
             print(f"DEBUG: Showing notification - Title: {title}, Message: {message}")
         except Exception as e:
             print(f"Error showing notification: {str(e)}")
+            traceback.print_exc()
 
     def update_notification_badge(self):
         """Update the notification badge on the dashboard button"""
@@ -1015,22 +1052,30 @@ class FloatingToolbar(QWidget):
                 if not icon.isNull():
                     pixmap = icon.pixmap(24, 24)
                     if not pixmap.isNull():
-                        # Convert to image for color manipulation
-                        image = pixmap.toImage()
-                        
-                        # Apply new color while preserving alpha
-                        for x in range(image.width()):
-                            for y in range(image.height()):
-                                pixel_color = image.pixelColor(x, y)
-                                if pixel_color.alpha() > 0:
-                                    new_color = QColor(color)
-                                    new_color.setAlpha(pixel_color.alpha())
-                                    image.setPixelColor(x, y, new_color)
-                        
-                        # Convert back to pixmap and update button
-                        colored_pixmap = QPixmap.fromImage(image)
-                        if not colored_pixmap.isNull():
-                            btn.setIcon(QIcon(colored_pixmap))
+                        try:
+                            # Convert to image for color manipulation
+                            image = pixmap.toImage()
+                            
+                            # Apply new color while preserving alpha
+                            for x in range(image.width()):
+                                for y in range(image.height()):
+                                    try:
+                                        pixel_color = image.pixelColor(x, y)
+                                        if pixel_color.alpha() > 0:
+                                            new_color = QColor(color)
+                                            new_color.setAlpha(pixel_color.alpha())
+                                            image.setPixelColor(x, y, new_color)
+                                    except Exception as pixel_error:
+                                        # Skip problematic pixels
+                                        print(f"Pixel error at {x},{y}: {str(pixel_error)}")
+                                        continue
+                            
+                            # Convert back to pixmap and update button
+                            colored_pixmap = QPixmap.fromImage(image)
+                            if not colored_pixmap.isNull():
+                                btn.setIcon(QIcon(colored_pixmap))
+                        except Exception as img_error:
+                            print(f"Image processing error for button {btn_id}: {str(img_error)}")
             
             return 0  # Return success to Windows message handler
             
@@ -1045,63 +1090,126 @@ class FloatingToolbar(QWidget):
 
     def apply_static_theme(self):
         """Apply a static color theme to all icons"""
-        theme_colors = {
-            "White Icons": "#FFFFFF",
-            "Blue Theme": "#2196F3",
-            "Green Theme": "#4CAF50",
-            "Purple Theme": "#9C27B0"
-        }
-        
-        print(f"Applying static theme: {self.current_theme}")
-        if self.current_theme in theme_colors:
+        try:
+            theme_colors = {
+                "White Icons": "#FFFFFF",
+                "Blue Theme": "#2196F3",
+                "Green Theme": "#4CAF50",
+                "Purple Theme": "#9C27B0"
+            }
+            
+            print(f"Applying static theme: {self.current_theme}")
+            
+            # Ensure we have a valid theme
+            if not hasattr(self, 'current_theme') or not self.current_theme or self.current_theme not in theme_colors:
+                print(f"Warning: Unknown or empty theme: '{getattr(self, 'current_theme', None)}', defaulting to White Icons")
+                self.current_theme = "White Icons"
+            
+            # Get the color for the theme
             color = QColor(theme_colors[self.current_theme])
-            print(f"Using color: {color.name()}")
+            print(f"Using color: {color.name()} for theme: {self.current_theme}")
             
             # Update each button's icon color
+            if not hasattr(self, 'buttons') or not self.buttons:
+                print("Warning: No buttons found to update")
+                return
+            
             for btn_id, btn in self.buttons.items():
                 # Skip buttons with static colors
-                if btn_id in self.static_colors:
+                if hasattr(self, 'static_colors') and btn_id in self.static_colors:
                     print(f"Skipping static color button: {btn_id}")
                     continue
+                
+                try:
+                    # Get the current icon
+                    icon = btn.icon()
+                    if not icon or icon.isNull():
+                        print(f"Warning: Null icon for button {btn_id}")
+                        continue
                     
-                # Get the current icon
-                icon = btn.icon()
-                if not icon.isNull():
-                    print(f"Updating icon for button: {btn_id}")
                     pixmap = icon.pixmap(24, 24)
-                    
+                    if not pixmap or pixmap.isNull():
+                        print(f"Warning: Null pixmap for button {btn_id}")
+                        continue
+                
                     # Convert to image for color manipulation
                     image = pixmap.toImage()
-                    
+                    if image.isNull():
+                        print(f"Warning: Failed to convert pixmap to image for button {btn_id}")
+                        continue
+                
                     # Apply new color while preserving alpha
-                    for x in range(image.width()):
-                        for y in range(image.height()):
-                            pixel_color = image.pixelColor(x, y)
-                            if pixel_color.alpha() > 0:
-                                new_color = QColor(color)
-                                new_color.setAlpha(pixel_color.alpha())
-                                image.setPixelColor(x, y, new_color)
-                    
+                    width = image.width()
+                    height = image.height()
+                
+                    for x in range(width):
+                        for y in range(height):
+                            try:
+                                pixel_color = image.pixelColor(x, y)
+                                alpha = pixel_color.alpha()
+                                if alpha > 0:
+                                    new_color = QColor(color)
+                                    new_color.setAlpha(alpha)
+                                    image.setPixelColor(x, y, new_color)
+                            except Exception as pixel_error:
+                                # Skip problematic pixels
+                                print(f"Pixel error at {x},{y}: {str(pixel_error)}")
+                                continue
+                
                     # Convert back to pixmap and update button
                     colored_pixmap = QPixmap.fromImage(image)
-                    btn.setIcon(QIcon(colored_pixmap))
-        else:
-            print(f"Warning: Unknown theme color: {self.current_theme}")
+                    if not colored_pixmap.isNull():
+                        btn.setIcon(QIcon(colored_pixmap))
+                    else:
+                        print(f"Warning: Failed to create colored pixmap for button {btn_id}")
+                except Exception as e:
+                    print(f"Error processing button {btn_id}: {str(e)}")
+                    continue
+                
+            return True
+        except Exception as e:
+            print(f"Error applying static theme: {str(e)}")
+            return False
 
     def update_theme(self, new_theme):
         """Update the toolbar's theme"""
-        print(f"Updating theme to: {new_theme}")
-        self.current_theme = new_theme
-        
-        # Stop color timer if it's running
-        if self.color_timer.isActive():
-            self.color_timer.stop()
-        
-        # Start or stop color timer based on theme
-        if new_theme == "Rainbow Animation":
-            self.color_timer.start(50)  # Update every 50ms for smooth animation
-        else:
-            self.apply_static_theme()
+        try:
+            print(f"Updating theme to: {new_theme}")
+            
+            # Validate the theme
+            valid_themes = ["Rainbow Animation", "White Icons", "Blue Theme", "Green Theme", "Purple Theme"]
+            if not new_theme or new_theme not in valid_themes:
+                print(f"Warning: Invalid theme '{new_theme}', defaulting to 'White Icons'")
+                new_theme = "White Icons"
+            
+            # Stop color timer if it's running
+            if hasattr(self, 'color_timer') and self.color_timer.isActive():
+                self.color_timer.stop()
+                print("Stopped color timer")
+            
+            # Update the current theme
+            self.current_theme = new_theme
+            print(f"Current theme set to: {self.current_theme}")
+            
+            # Save the theme preference to settings
+            self.settings.setValue('icon_theme', new_theme)
+            print(f"Saved theme preference to settings: {new_theme}")
+            
+            # Apply the appropriate theme
+            if new_theme == "Rainbow Animation":
+                # Start the color timer for rainbow animation
+                print("Starting rainbow animation timer")
+                if hasattr(self, 'color_timer'):
+                    self.color_timer.start(50)  # Update every 50ms
+            else:
+                # Apply a static theme
+                print(f"Applying user's saved theme: {new_theme}")
+                self.apply_static_theme()
+            
+            return True
+        except Exception as e:
+            print(f"Error updating theme: {str(e)}")
+            return False
 
     def clear_notifications(self):
         """Clear all notifications and reset the badge"""
@@ -1210,33 +1318,26 @@ class LoadingOverlay(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self, parent: Optional[QMainWindow] = None) -> None:
         super().__init__(parent)
-        
-        # Initialize asyncio loop
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        
-        # Create timer for asyncio events
-        self.asyncio_timer = QTimer(self)
-        self.asyncio_timer.timeout.connect(self._process_asyncio_events)
-        self.asyncio_timer.start(10)  # Process every 10ms
-        
-        # Initialize other attributes
         self.current_user = None
-        self.opportunity_form = None
-        self.management_portal = None
         self.profile = None
-        self.websocket = None
-        self.websocket_task = None
-        self.notification_queue = asyncio.Queue()
+        self.opportunity_form = None
+        self.dashboard = None
+        self.management_portal = None
+        
+        # Set window title for debugging
+        self.setWindowTitle("SI Opportunity Manager - Main Window")
+        
+        # Hide main window initially - will be shown after auth
+        self.setVisible(False)
         
         # Initialize UI
         self.initUI()
         
-        # Show auth widget
-        self.auth.show()
-        
+        # Debug print window info
+        print(f"DEBUG: MainWindow initialized - Title: {self.windowTitle()}, Visible: {self.isVisible()}")
+
     def _process_asyncio_events(self):
-        """Process pending asyncio events"""
+        """Process asyncio events in the Qt event loop"""
         try:
             self.loop.stop()
             self.loop.run_forever()
@@ -1246,14 +1347,6 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Handle application close event"""
         try:
-            # Stop asyncio timer and close loop
-            self.asyncio_timer.stop()
-            pending = asyncio.all_tasks(self.loop)
-            for task in pending:
-                task.cancel()
-            self.loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-            self.loop.close()
-            
             # Hide all windows
             if hasattr(self, 'toolbar'):
                 self.toolbar.hide()
@@ -1276,24 +1369,6 @@ class MainWindow(QMainWindow):
             print(f"Error during close: {str(e)}")
             event.accept()
 
-    async def init_websocket(self):
-        """Initialize WebSocket connection"""
-        if not self.current_user:
-            return
-            
-        try:
-            self.websocket = await websockets.connect(
-                f"ws://localhost:8000/ws/notifications/{self.current_user.id}"
-            )
-            self.websocket_task = asyncio.create_task(self.handle_notifications())
-        except Exception as e:
-            print(f"Error initializing WebSocket: {e}")
-            
-    def start_websocket(self):
-        """Start WebSocket connection in the event loop"""
-        if self.current_user:
-            asyncio.run_coroutine_threadsafe(self.init_websocket(), self.loop)
-
     def on_authentication(self, user):
         """Handle successful authentication"""
         print(f"DEBUG: User authenticated - Role: {user.role}")
@@ -1305,9 +1380,6 @@ class MainWindow(QMainWindow):
         # Create toolbar
         self.toolbar = FloatingToolbar(self)
         self.toolbar.show()
-        
-        # Start WebSocket connection
-        self.start_websocket()
         
         # Recreate dashboard with current user
         if hasattr(self, 'dashboard'):
@@ -1337,8 +1409,25 @@ class MainWindow(QMainWindow):
                 user_obj.last_login = datetime.now(timezone.utc)
                 db.commit()
             
+            # Get total opportunities count for welcome notification
+            total_opportunities = db.query(Opportunity).count()
+            new_opportunities = db.query(Opportunity).filter(
+                Opportunity.status.ilike("New"),
+                Opportunity.creator_id != str(user.id)
+            ).count()
+            
+            # Show welcome notification with opportunity counts
+            self.toolbar.show_windows_notification(
+                "Welcome to SI Opportunity Manager",
+                f"You have {total_opportunities} total opportunities in your dashboard.\n{new_opportunities} new opportunities require attention."
+            )
+            
             # Start notification check timer
             self.toolbar.check_updates()
+            
+            # Keep main window hidden but make it available for other components
+            print("DEBUG: Authentication complete, main window remains hidden, toolbar visible")
+            # self.show() - Don't show main window, just keep toolbar visible
             
         except Exception as e:
             print(f"Error initializing notifications: {e}")
@@ -1494,39 +1583,28 @@ def main():
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     
-    # Create application instance
+    # Create application
     app = QApplication(sys.argv)
-    
-    # Set application style
     app.setStyle("Fusion")
     
-    # Enable additional attributes after QApplication creation
-    QApplication.setAttribute(Qt.AA_UseStyleSheetPropagationInWidgetStyles)
-    QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
-    
-    # Set application-wide stylesheet with tooltip style
+    # Set application-wide stylesheet
     app.setStyleSheet("""
-        QToolTip { 
-            background-color: rgba(43, 43, 43, 0.95);
-            color: white;
-            border: 1px solid #555555;
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin: 0px;
-        }
-        QMainWindow {
-            background-color: #1e1e1e;
-        }
         QWidget {
-            color: #ffffff;
-            font-size: 12px;
+            font-family: 'Segoe UI', Arial, sans-serif;
         }
     """)
     
     # Create and show main window
     window = MainWindow()
-    window.show()
+    # window.show() - Don't show main window yet, it will be shown after authentication
+    
+    # Debug print all top-level windows
+    print("\nDEBUG: Top-level windows at startup:")
+    for widget in app.topLevelWidgets():
+        print(f"DEBUG: Window: {widget.__class__.__name__}, Title: {widget.windowTitle()}, Visible: {widget.isVisible()}")
+    
+    # Show auth widget
+    window.auth.show()
     
     # Start the event loop
     sys.exit(app.exec_())

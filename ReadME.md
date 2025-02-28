@@ -153,3 +153,36 @@ Planned future improvements:
 Last Updated: [Current Date]
 Version: 1.0.0
 
+## Supabase File Storage Setup
+
+The application now uses Supabase for file storage. Follow these steps to set up Supabase:
+
+1. **Create a Supabase Account and Project**
+   - Go to [Supabase](https://supabase.com/) and sign up for an account
+   - Create a new project
+
+2. **Set Up Storage**
+   - In your Supabase project dashboard, navigate to "Storage"
+   - Create a new bucket named "opportunity-files" (or choose your own name)
+   - Set the bucket's privacy settings to "Authenticated" if you want only logged-in users to access files, or "Public" if you want files to be publicly accessible
+
+3. **Configure Environment Variables**
+   - Copy the `.env.example` file to `.env`
+   - Fill in your Supabase credentials:
+     - `SUPABASE_URL`: Your project URL (found in Project Settings > API)
+     - `SUPABASE_KEY`: Your project's anon/public key (found in Project Settings > API)
+     - `SUPABASE_SERVICE_KEY`: Your project's service_role key (found in Project Settings > API)
+     - `SUPABASE_BUCKET`: The name of your storage bucket (default: "opportunity-files")
+
+4. **Install Dependencies**
+   - Run `pip install -r requirements.txt` to install the required packages
+
+## Running the Application
+
+1. Ensure all environment variables are set in your `.env` file
+2. Run the application with `python main.py`
+
+## Migrating Existing Files
+
+If you have existing files stored locally, they will need to be migrated to Supabase. A migration script will be provided in a future update.
+

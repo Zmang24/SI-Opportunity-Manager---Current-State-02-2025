@@ -6,7 +6,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QShowEvent, QCloseEvent
 from app.database.connection import SessionLocal
 from app.models.models import User, Opportunity
-from app.auth.auth_handler import hash_pin
+from app.auth.auth_handler import hash_pin, verify_pin
 from sqlalchemy import update
 import traceback
 
@@ -488,43 +488,80 @@ class ProfileWidget(QWidget):
                 print(traceback.format_exc())
                 
     def save_changes(self) -> None:
-        """Save changes to the user profile"""
-        with SessionLocal() as db:
-            try:
-                # Get and validate PIN fields
-                current_pin = self.current_pin.text()
-                new_pin = self.new_pin.text()
+        """Save changes to user profile"""
+        try:
+            db = SessionLocal()
+            
+            # Get current PIN and new PIN fields
+            current_pin = self.current_pin.text() if hasattr(self, 'current_pin') else ""
+            new_pin = self.new_pin.text() if hasattr(self, 'new_pin') else ""
+            confirm_pin = self.confirm_pin.text() if hasattr(self, 'confirm_pin') else ""
+            
+            # Only validate PIN if the user is trying to change it
+            if new_pin:
+                # Verify current PIN if provided
+                if not current_pin:
+                    QMessageBox.warning(self, "PIN Required", "Please enter your current PIN to change it.")
+                    return
                 
-                # Validate current PIN
-                if current_pin:
-                    if not hash_pin(current_pin) == self.current_user.pin:
-                        QMessageBox.warning(self, "Error", "Current PIN is incorrect")
-                        return
-                    
-                    # Update PIN
-                    self.current_user.pin = hash_pin(new_pin)
+                # Verify current PIN
+                if not verify_pin(current_pin, str(self.current_user.pin)):
+                    QMessageBox.warning(self, "Invalid PIN", "Current PIN is incorrect.")
+                    return
                 
-                # Get and validate other fields
-                department_field = self.fields.get("department", {}).get("field")
-                department_value: str = ""
-                if isinstance(department_field, QComboBox):
-                    department_value = department_field.currentText()
-                elif isinstance(department_field, QLineEdit):
-                    department_value = department_field.text()
+                # Validate new PIN
+                if new_pin != confirm_pin:
+                    QMessageBox.warning(self, "PIN Mismatch", "New PIN and confirmation do not match.")
+                    return
                 
-                # Update user fields
-                self.current_user.department = department_value
-                
-                # Commit changes
-                db.commit()
-                print("Profile updated successfully")
-                
-                QMessageBox.information(self, "Success", "Profile updated successfully")
-                self.profile_updated.emit()
-                print("Profile updated signal emitted")
-                
-            except Exception as e:
-                print(f"Error saving changes: {str(e)}\nTraceback: {traceback.format_exc()}")
-                db.rollback()
-                QMessageBox.warning(self, "Error", "Failed to update profile")
+                # Update PIN using SQLAlchemy update
+                hashed_pin = hash_pin(new_pin)
+                db.query(User).filter(User.id == self.current_user.id).update({"pin": hashed_pin})
+                print("PIN updated successfully")
+            
+            # Get department value from fields
+            department_value = ""
+            if "department" in self.fields:
+                field = self.fields["department"]
+                if isinstance(field, QLineEdit):
+                    department_value = field.text()
+                elif isinstance(field, QComboBox):
+                    department_value = field.currentText()
+            
+            # Update department if provided
+            if department_value:
+                print(f"Updating department to: {department_value}")
+                db.query(User).filter(User.id == self.current_user.id).update({"department": department_value})
+            
+            # Save the selected theme
+            selected_theme = self.color_theme.currentText()
+            print(f"Saving theme: {selected_theme}")
+            
+            # Update the theme using SQLAlchemy update
+            db.query(User).filter(User.id == self.current_user.id).update({"icon_theme": selected_theme})
+            
+            # Commit changes
+            db.commit()
+            print("Profile changes committed to database")
+            
+            # Refresh the current user object from the database
+            self.current_user = db.query(User).filter(User.id == self.current_user.id).first()
+            
+            # Emit signal that profile was updated
+            self.profile_updated.emit()
+            print("Profile updated signal emitted")
+            
+            # Show success message
+            QMessageBox.information(self, "Profile Updated", "Your profile has been updated successfully.")
+            
+            # Hide profile window
+            self.hide()
+            
+        except Exception as e:
+            print(f"Error saving profile changes: {str(e)}")
+            print(traceback.format_exc())
+            QMessageBox.critical(self, "Error", f"An error occurred while saving changes: {str(e)}")
+        finally:
+            if 'db' in locals():
+                db.close()
             

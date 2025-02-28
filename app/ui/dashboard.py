@@ -923,15 +923,13 @@ class DashboardWidget(QWidget):
     def open_file(self, file):
         """Open the file using the system's default application"""
         try:
-            file_path = os.path.join(STORAGE_DIR, file.storage_path)
-            if os.path.exists(file_path):
-                import platform
-                if platform.system() == 'Darwin':  # macOS
-                    os.system(f'open "{file_path}"')
-                elif platform.system() == 'Windows':  # Windows
-                    os.system(f'start "" "{file_path}"')
-                else:  # Linux
-                    os.system(f'xdg-open "{file_path}"')
+            from app.services.supabase_storage import SupabaseStorageService
+            
+            if SupabaseStorageService.file_exists(file.storage_path):
+                if SupabaseStorageService.open_file(file.storage_path):
+                    print(f"Successfully opened file: {file.original_name}")
+                else:
+                    QMessageBox.warning(self, "Error Opening File", "Could not open the file with the default application.")
             else:
                 QMessageBox.warning(self, "File Not Found", "The file could not be found in the storage location.")
         except Exception as e:

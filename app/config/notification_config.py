@@ -5,10 +5,8 @@ from datetime import timedelta
 @dataclass
 class NotificationConfig:
     """Configuration for the notification system"""
-    # WebSocket settings
-    WEBSOCKET_HOST: str = "localhost"
-    WEBSOCKET_PORT: int = 8000
-    WEBSOCKET_PATH: str = "/ws/notifications"
+    # Polling settings
+    POLLING_INTERVAL: int = 30  # seconds
     
     # Notification display settings
     NOTIFICATION_DURATION: int = 5  # seconds
