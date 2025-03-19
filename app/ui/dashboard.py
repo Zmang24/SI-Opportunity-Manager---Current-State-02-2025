@@ -1055,7 +1055,7 @@ class DashboardWidget(QWidget):
                 activity_log = ActivityLog(
                     opportunity_id=str(opportunity.id),
                     user_id=str(self.current_user.id) if self.current_user else None,
-                    activity_type="status_change",
+                    action="status_change",
                     details=activity_details
                 )
                 db.add(activity_log)
