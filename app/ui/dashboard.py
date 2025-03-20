@@ -224,20 +224,65 @@ class DashboardWidget(QWidget):
         my_tickets_layout.setSpacing(16)
         
         # Status filter
-        status_layout = QHBoxLayout()
-        status_layout.addWidget(QLabel("Status:"))
         self.status_filter = QComboBox()
-        self.status_filter.addItems(["All", "New", "In Progress", "Completed", "Needs Info"])
-        status_layout.addWidget(self.status_filter)
-        my_tickets_layout.addLayout(status_layout)
+        self.status_filter.setStyleSheet("""
+            QComboBox {
+                background-color: #262626;
+                color: white;
+                border: 1px solid #404040;
+                padding: 4px 8px;
+                border-radius: 4px;
+                min-width: 100px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 8px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 4px solid white;
+            }
+        """)
+        self.status_filter.addItem("")  # Empty default option
+        self.status_filter.addItem("All")
+        self.status_filter.addItem("New")
+        self.status_filter.addItem("In Progress")
+        self.status_filter.addItem("Completed")
+        self.status_filter.addItem("Needs Info")
+        self.status_filter.currentTextChanged.connect(self.filter_opportunities)
+        my_tickets_layout.addWidget(self.status_filter)
         
         # Assignment filter
-        assignment_layout = QHBoxLayout()
-        assignment_layout.addWidget(QLabel("Assignment:"))
         self.assignment_filter = QComboBox()
-        self.assignment_filter.addItems(["All", "Created by me", "Assigned to me", "Unassigned"])
-        assignment_layout.addWidget(self.assignment_filter)
-        my_tickets_layout.addLayout(assignment_layout)
+        self.assignment_filter.setStyleSheet("""
+            QComboBox {
+                background-color: #262626;
+                color: white;
+                border: 1px solid #404040;
+                padding: 4px 8px;
+                border-radius: 4px;
+                min-width: 100px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 8px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 4px solid white;
+            }
+        """)
+        self.assignment_filter.addItem("")  # Empty default option
+        self.assignment_filter.addItem("All")
+        self.assignment_filter.addItem("Created by me")
+        self.assignment_filter.addItem("Assigned to me")
+        self.assignment_filter.addItem("Unassigned")
+        self.assignment_filter.currentTextChanged.connect(self.filter_opportunities)
+        my_tickets_layout.addWidget(self.assignment_filter)
         
         advanced_filter_layout.addWidget(self.my_tickets_filters)
         
@@ -341,6 +386,10 @@ class DashboardWidget(QWidget):
         
         self.load_opportunities()
 
+    def filter_opportunities(self):
+        """Filter opportunities based on status and assignment filters"""
+        self.load_opportunities()
+
     def apply_advanced_filters(self):
         """Apply advanced filters"""
         self.load_opportunities()
@@ -350,8 +399,8 @@ class DashboardWidget(QWidget):
         self.date_from.setDate(QDate.currentDate().addDays(-7))
         self.date_to.setDate(QDate.currentDate())
         if self.current_filter == "my_tickets":
-            self.status_filter.setCurrentText("All")
-            self.assignment_filter.setCurrentText("All")
+            self.status_filter.setCurrentText("")
+            self.assignment_filter.setCurrentText("")
         self.apply_advanced_filters()
 
     def get_filtered_opportunities(self, db: Session) -> List[Opportunity]:

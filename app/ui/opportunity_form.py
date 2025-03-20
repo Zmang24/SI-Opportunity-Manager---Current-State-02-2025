@@ -655,11 +655,12 @@ class OpportunityForm(QWidget):
             if self.vehicles:
                 # Populate year combo
                 years = sorted(set(v.year for v in self.vehicles), reverse=True)
+                # Add 2025 if not already in the list
+                if "2025" not in years:
+                    years = ["2025"] + years
+                # Add empty item at the start
+                self.year_combo.addItem("")
                 self.year_combo.addItems(map(str, years))
-                
-                # Trigger initial make update if there are years
-                if years:
-                    self.update_makes(str(years[0]))
             else:
                 print("No vehicles found in database")
             
