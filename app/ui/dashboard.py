@@ -40,10 +40,38 @@ class DashboardWidget(QWidget):
         self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller default size
         
     def closeEvent(self, event: QCloseEvent) -> None:
-        # Clean up before closing
-        self.cleanup_widgets()
-        event.ignore()
-        self.hide()
+        """Handle closing of the dashboard window and cleanup all resources"""
+        try:
+            # Clean up widgets
+            self.cleanup_widgets()
+            
+            # Stop any running timers
+            if hasattr(self, 'refresh_timer'):
+                self.refresh_timer.stop()
+            
+            # Close database connections
+            try:
+                db = SessionLocal()
+                db.close()
+            except:
+                pass
+            
+            # Hide the window
+            self.hide()
+            
+            # Get the QApplication instance
+            app = QApplication.instance()
+            if app:
+                # Close the application
+                app.quit()
+            
+            # Accept the close event
+            event.accept()
+            
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")
+            print(traceback.format_exc())
+            event.accept()  # Still accept the event even if there's an error
         
     def cleanup_widgets(self) -> None:
         """Safely clean up widgets"""
