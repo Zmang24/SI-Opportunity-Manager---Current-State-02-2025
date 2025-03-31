@@ -12,6 +12,7 @@ from sqlalchemy import text
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 import os
+import traceback
 
 class TicketViewDialog(QDialog):
     def __init__(self, opportunity_id, current_user, parent=None):
@@ -245,9 +246,27 @@ class ManagementPortal(QMainWindow):
         self.initUI()
         
     def closeEvent(self, event):
-        # Hide the window instead of closing it
-        event.ignore()
-        self.hide()
+        """Handle closing of the management portal window"""
+        try:
+            # Clean up any resources
+            if hasattr(self, 'dashboard'):
+                self.dashboard.cleanup_widgets()
+            
+            # Close database connections
+            try:
+                db = SessionLocal()
+                db.close()
+            except:
+                pass
+            
+            # Hide the window instead of closing it
+            event.ignore()
+            self.hide()
+            
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")
+            print(traceback.format_exc())
+            event.ignore()  # Still ignore the event even if there's an error
         
     def initUI(self):
         # Create central widget and main layout
@@ -1042,7 +1061,6 @@ class ManagementPortal(QMainWindow):
             
         except Exception as e:
             print(f"Error updating statistics: {str(e)}")
-            import traceback
             print(traceback.format_exc())
             
     def edit_user(self, user):

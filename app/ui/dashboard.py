@@ -56,22 +56,14 @@ class DashboardWidget(QWidget):
             except:
                 pass
             
-            # Hide the window
+            # Hide the window instead of closing it
+            event.ignore()
             self.hide()
-            
-            # Get the QApplication instance
-            app = QApplication.instance()
-            if app:
-                # Close the application
-                app.quit()
-            
-            # Accept the close event
-            event.accept()
             
         except Exception as e:
             print(f"Error during cleanup: {str(e)}")
             print(traceback.format_exc())
-            event.accept()  # Still accept the event even if there's an error
+            event.ignore()  # Still ignore the event even if there's an error
         
     def cleanup_widgets(self) -> None:
         """Safely clean up widgets"""
