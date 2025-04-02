@@ -31,8 +31,6 @@ import traceback
 from typing import Optional, Dict, List, Union, cast, Any, Protocol, TypeVar, TYPE_CHECKING
 import asyncio
 import json
-from app.ui.login import LoginWindow
-from app.ui.toolbar import ToolBar
 from app.utils.dependency_checker import check_dependencies
 
 T = TypeVar('T')
@@ -1338,8 +1336,11 @@ class MainWindow(QMainWindow):
         self.opportunity_form = None
         self.management_portal = None
         
-        # Show login window
-        self.show_login()
+        # Initialize auth widget
+        self.auth = AuthWidget()
+        self.auth.authenticated.connect(self.on_authentication)
+        self.auth.create_account_requested.connect(self.show_account_creation)
+        self.auth.show()
         
     def _process_asyncio_events(self):
         """Process asyncio events in the Qt event loop"""
@@ -1386,8 +1387,8 @@ class MainWindow(QMainWindow):
         self.toolbar = FloatingToolbar(self)
         self.toolbar.show()
         
-        # Recreate dashboard with current user
-        if hasattr(self, 'dashboard'):
+        # Create new dashboard with current user
+        if hasattr(self, 'dashboard') and self.dashboard is not None:
             self.dashboard.deleteLater()
         self.dashboard = DashboardWidget(current_user=user)
         
