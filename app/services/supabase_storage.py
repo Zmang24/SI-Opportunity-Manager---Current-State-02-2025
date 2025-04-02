@@ -32,6 +32,49 @@ class SupabaseStorageService:
         return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     
     @staticmethod
+    def test_connection() -> bool:
+        """
+        Test the connection to Supabase storage.
+        
+        Returns:
+            True if connection is successful, False otherwise
+        """
+        try:
+            supabase = SupabaseStorageService.get_supabase_client()
+            # Try to access the storage API
+            supabase.storage.list_buckets()
+            return True
+        except Exception as e:
+            print(f"Supabase connection error: {e}")
+            return False
+    
+    @staticmethod
+    def list_buckets() -> List[str]:
+        """
+        List all available buckets in Supabase storage.
+        
+        Returns:
+            List of bucket names
+        """
+        try:
+            # First test the connection
+            if not SupabaseStorageService.test_connection():
+                return []
+                
+            supabase = SupabaseStorageService.get_supabase_client()
+            # Get buckets using the storage API
+            response = supabase.storage.list_buckets()
+            if isinstance(response, list):
+                return [bucket.get('name', '') for bucket in response if bucket.get('name')]
+            elif isinstance(response, dict):
+                # Handle case where response is a single bucket
+                return [response.get('name', '')] if response.get('name') else []
+            return []
+        except Exception as e:
+            print(f"Error listing buckets: {e}")
+            return []
+    
+    @staticmethod
     def calculate_file_hash(file_path: str) -> str:
         """
         Calculate SHA-256 hash of a file.

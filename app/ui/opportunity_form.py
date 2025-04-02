@@ -821,16 +821,27 @@ class OpportunityForm(QWidget):
             try:
                 # Calculate file hash
                 file_hash = calculate_file_hash(file_path)
+                file_name = os.path.basename(file_path)
                 
-                # Store file
+                # Try to store in Supabase first
                 storage_path = store_file(file_path, file_hash)
+                
+                # If Supabase storage fails, store locally
+                if not storage_path:
+                    # Create local storage path
+                    local_dir = os.path.join(STORAGE_DIR, file_hash[:2], file_hash[2:4])
+                    os.makedirs(local_dir, exist_ok=True)
+                    
+                    # Copy file to local storage
+                    local_path = os.path.join(local_dir, file_name)
+                    shutil.copy2(file_path, local_path)
+                    storage_path = os.path.join('local', file_hash[:2], file_hash[2:4], file_name)
                 
                 # Create container for attachment row
                 attachment_row = QWidget()
                 row_layout = QHBoxLayout(attachment_row)
                 
                 # Add file name label
-                file_name = os.path.basename(file_path)
                 label = QLabel(file_name)
                 label.setStyleSheet("color: #ffffff;")
                 row_layout.addWidget(label)
@@ -864,12 +875,13 @@ class OpportunityForm(QWidget):
                     'hash': file_hash,
                     'name': file_name,
                     'size': os.path.getsize(file_path),
-                    'mime_type': mimetypes.guess_type(file_path)[0]
+                    'mime_type': mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
                 })
                 self.attachment_labels.append(attachment_row)
                 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to attach file: {str(e)}")
+                print(f"Error attaching file: {str(e)}")  # Log the error for debugging
 
     def remove_attachment(self, row_widget, file_path):
         """Remove an attachment"""
@@ -900,13 +912,16 @@ class OpportunityForm(QWidget):
                             'affected_portions': affected_portions
                         })
             
+            # Format vehicle information
+            vehicle_info = f"{self.year_combo.currentText()} {self.make_combo.currentText()} {self.model_combo.currentText()}"
+            
+            # Combine vehicle info with user's description
+            full_description = f"Vehicle: {vehicle_info}\n\n{self.description.toPlainText()}"
+            
             # Create the opportunity
             new_opp = Opportunity(
                 title=self.ticket_number,
-                year=self.year_combo.currentText(),
-                make=self.make_combo.currentText(),
-                model=self.model_combo.currentText(),
-                description=self.description.toPlainText(),
+                description=full_description,
                 status='new',
                 systems=systems_data,
                 creator_id=self.current_user_id,
@@ -923,7 +938,7 @@ class OpportunityForm(QWidget):
                     user_id=user.id,
                     opportunity_id=new_opp.id,
                     type="new_opportunity",
-                    message=f"New opportunity created: {new_opp.title} - {new_opp.display_title}",
+                    message=f"New opportunity created: {new_opp.title} - Vehicle: {vehicle_info}",
                     created_at=datetime.utcnow(),
                     read=False
                 )

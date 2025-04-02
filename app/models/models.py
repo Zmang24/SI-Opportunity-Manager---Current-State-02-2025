@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 from ..database.connection import Base
+from datetime import datetime, timezone
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -70,37 +71,31 @@ class Opportunity(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
-    description = Column(Text)
-    status = Column(String)
-    creator_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    acceptor_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
-    year = Column(String)
-    make = Column(String)
-    model = Column(String)
-    systems = Column(JSONB)
-    affected_portions = Column(JSONB)
-    meta_data = Column(JSONB)
-    comments = Column(JSONB, default=list)  # Store comments as a list of dictionaries
-    created_at = Column(DateTime(timezone=True))
-    updated_at = Column(DateTime(timezone=True))
-    completed_at = Column(DateTime(timezone=True))
+    description = Column(String)
+    status = Column(String, default="new")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime(timezone=True))
+    completed_at = Column(DateTime(timezone=True))
     response_time = Column(Interval)
     work_time = Column(Interval)
+    creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    acceptor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    systems = Column(JSONB, default=list)
+    comments = Column(JSONB, default=list)  # Store comments as JSONB array
 
     # Relationships
-    creator = relationship("User", back_populates="created_opportunities", foreign_keys=[creator_id])
-    acceptor = relationship("User", back_populates="accepted_opportunities", foreign_keys=[acceptor_id])
-    files = relationship("File", back_populates="opportunity")
-    notifications = relationship("Notification", back_populates="opportunity")
-    activity_logs = relationship("ActivityLog", back_populates="opportunity")
+    files = relationship("File", back_populates="opportunity", cascade="all, delete-orphan")
+    creator = relationship("User", foreign_keys=[creator_id], back_populates="created_opportunities")
+    acceptor = relationship("User", foreign_keys=[acceptor_id], back_populates="accepted_opportunities")
+    notifications = relationship("Notification", back_populates="opportunity", cascade="all, delete-orphan")
+    activity_logs = relationship("ActivityLog", back_populates="opportunity", cascade="all, delete-orphan")
     systems_rel = relationship("AdasSystem", secondary="opportunity_systems", back_populates="opportunities")
-    file_attachments = relationship("FileAttachment", back_populates="opportunity")
-    attachments = relationship("Attachment", back_populates="opportunity")
 
     @property
     def display_title(self):
-        return f"{self.year} {self.make} {self.model}" if all([self.year, self.make, self.model]) else "No Vehicle Specified"
+        """Get a display-friendly title"""
+        return self.title if len(self.title) <= 50 else self.title[:47] + "..."
 
 class AdasSystem(Base):
     __tablename__ = "adas_systems"
@@ -142,34 +137,6 @@ class File(Base):
     def file_url(self):
         """Return the URL/path to access this file"""
         return f"/files/{self.id}/{self.name}"
-
-class FileAttachment(Base):
-    __tablename__ = "file_attachments"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id'))
-    filename = Column(String, nullable=False)
-    file_type = Column(String)
-    file_path = Column(String, nullable=False)
-    file_size = Column(Integer)
-    uploaded_at = Column(DateTime(timezone=True))
-    uploaded_by_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
-
-    # Relationships
-    opportunity = relationship("Opportunity", back_populates="file_attachments")
-    uploaded_by = relationship("User")
-
-class Attachment(Base):
-    __tablename__ = "attachments"
-
-    id = Column(Integer, primary_key=True)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey('opportunities.id'))
-    file_path = Column(String, nullable=False)
-    file_type = Column(String)
-    created_at = Column(DateTime(timezone=True))
-
-    # Relationships
-    opportunity = relationship("Opportunity", back_populates="attachments")
 
 class Notification(Base):
     __tablename__ = "notifications"

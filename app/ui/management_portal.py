@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                            QDialog, QCheckBox, QMainWindow, QHeaderView, QTextEdit, QFileDialog)
 from PyQt5.QtCore import Qt, pyqtSignal
 from app.database.connection import SessionLocal
-from app.models.models import User, Opportunity, ActivityLog, Notification, File, FileAttachment, Attachment, Vehicle
+from app.models.models import User, Opportunity, ActivityLog, Notification, File, Vehicle
 from datetime import datetime, timedelta, timezone
 import statistics
 from app.ui.dashboard import DashboardWidget
@@ -775,12 +775,6 @@ class ManagementPortal(QMainWindow):
                 
                 # Delete files
                 db.query(File).filter(File.opportunity_id == opportunity_id).delete()
-                
-                # Delete file attachments
-                db.query(FileAttachment).filter(FileAttachment.opportunity_id == opportunity_id).delete()
-                
-                # Delete attachments
-                db.query(Attachment).filter(Attachment.opportunity_id == opportunity_id).delete()
                 
                 # Create activity log for the deletion
                 activity = ActivityLog(

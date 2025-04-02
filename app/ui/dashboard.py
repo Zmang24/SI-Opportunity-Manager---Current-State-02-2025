@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                            QPushButton, QScrollArea, QFrame, QMessageBox, QComboBox, QDateEdit,
                            QDialog, QTextEdit)
 from PyQt5.QtCore import Qt, QTimer, QDate, QPoint
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QKeySequence
 from app.database.connection import SessionLocal
 from app.models.models import Opportunity, Notification, ActivityLog, User
 from app.config import STORAGE_DIR
@@ -17,8 +17,53 @@ from sqlalchemy.orm import Session
 from sqlalchemy import Column, ColumnElement, String, DateTime, Interval
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import cast as sql_cast
+from sqlalchemy import text
 
 T = TypeVar('T')
+
+class DebugDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Dashboard Debug Information")
+        self.setMinimumSize(600, 400)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #1e1e1e;
+            }
+            QTextEdit {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                font-family: monospace;
+                font-size: 12px;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        
+        # Debug information text area
+        self.debug_text = QTextEdit()
+        self.debug_text.setReadOnly(True)
+        layout.addWidget(self.debug_text)
+        
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.close)
+        layout.addWidget(close_btn)
+        
+        self.setLayout(layout)
 
 class DashboardWidget(QWidget):
     refresh_needed = pyqtSignal()  # Signal to trigger refresh of other components
@@ -33,11 +78,156 @@ class DashboardWidget(QWidget):
         self.refresh_timer = QTimer()
         self.refresh_timer.setSingleShot(True)
         self.refresh_timer.timeout.connect(self.do_refresh)
+        self.debug_dialog = None
         self.initUI()
         
         # Set initial window size
         screen = QApplication.primaryScreen().availableGeometry()
         self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller default size
+        
+    def keyPressEvent(self, event):
+        """Handle key press events"""
+        if event.key() == Qt.Key_5 and event.modifiers() == Qt.ControlModifier:
+            self.show_debug_dialog()
+        else:
+            super().keyPressEvent(event)
+            
+    def show_debug_dialog(self):
+        """Show debug dialog with current state information"""
+        if not self.debug_dialog:
+            self.debug_dialog = DebugDialog(self)
+            
+        debug_info = []
+        
+        # Dependencies check
+        debug_info.append("=== Dependencies Check ===")
+        try:
+            import pkg_resources
+            required_packages = {
+                'PyQt5': '5.15.0',
+                'SQLAlchemy': '1.4.0',
+                'psycopg2-binary': '2.9.0',
+                'python-dotenv': '0.19.0',
+                'pandas': '1.3.0',
+                'numpy': '1.21.0',
+                'openpyxl': '3.0.0',
+                'requests': '2.26.0',
+                'Pillow': '8.3.0',
+                'python-dateutil': '2.8.2'
+            }
+            
+            for package, min_version in required_packages.items():
+                try:
+                    version = pkg_resources.get_distribution(package).version
+                    debug_info.append(f"{package}: {version} (Required: {min_version})")
+                except pkg_resources.DistributionNotFound:
+                    debug_info.append(f"❌ {package}: Not installed")
+            
+            # Check for zoneinfo (built-in module)
+            try:
+                import zoneinfo
+                debug_info.append("zoneinfo: Built-in module (Python 3.9+)")
+            except ImportError:
+                debug_info.append("❌ zoneinfo: Not available (requires Python 3.9+)")
+                
+        except Exception as e:
+            debug_info.append(f"Error checking dependencies: {str(e)}")
+        
+        # Database connection check
+        debug_info.append("\n=== Database Connection Status ===")
+        try:
+            db = SessionLocal()
+            # Test Neon connection using SQLAlchemy text()
+            result = db.execute(text("SELECT version()")).scalar()
+            debug_info.append(f"✅ Neon Database Connected")
+            debug_info.append(f"PostgreSQL Version: {result}")
+            
+            # Test database tables
+            tables = db.execute(text("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            """)).fetchall()
+            debug_info.append("\nAvailable Tables:")
+            for table in tables:
+                debug_info.append(f"- {table[0]}")
+            
+            # Test opportunity table
+            opp_count = db.query(Opportunity).count()
+            debug_info.append(f"\nTotal Opportunities: {opp_count}")
+            
+        except Exception as e:
+            debug_info.append(f"❌ Database Connection Error: {str(e)}")
+            debug_info.append(traceback.format_exc())
+        finally:
+            if 'db' in locals():
+                db.close()
+        
+        # Supabase connection check
+        debug_info.append("\n=== Supabase Connection Status ===")
+        try:
+            from app.services.supabase_storage import SupabaseStorageService
+            # Test Supabase connection
+            if SupabaseStorageService.test_connection():
+                debug_info.append("✅ Supabase Storage Connected")
+                # List buckets if connection is successful
+                buckets = SupabaseStorageService.list_buckets()
+                if buckets:
+                    debug_info.append("\nAvailable Buckets:")
+                    for bucket in buckets:
+                        debug_info.append(f"- {bucket}")
+                else:
+                    debug_info.append("\nNo buckets found in storage")
+            else:
+                debug_info.append("❌ Supabase Storage Connection Failed")
+                debug_info.append("Unable to connect to Supabase storage service")
+        except Exception as e:
+            debug_info.append(f"❌ Supabase Error: {str(e)}")
+            debug_info.append(traceback.format_exc())
+        
+        # Environment variables check
+        debug_info.append("\n=== Environment Variables ===")
+        required_env_vars = [
+            'DATABASE_URL',
+            'SUPABASE_URL',
+            'SUPABASE_KEY',
+            'SUPABASE_BUCKET'
+        ]
+        for var in required_env_vars:
+            value = os.getenv(var, '')
+            if value:
+                # Mask sensitive information
+                if 'key' in var.lower() or 'password' in var.lower() or 'secret' in var.lower():
+                    masked_value = value[:4] + '****' + value[-4:] if len(value) > 8 else '****'
+                elif '@' in value:  # For URLs with credentials
+                    masked_value = value.replace(value.split('@')[-1], '****')
+                else:
+                    masked_value = value
+                debug_info.append(f"✅ {var}: {masked_value}")
+            else:
+                debug_info.append(f"❌ {var}: Not set")
+        
+        # Current application state
+        debug_info.append("\n=== Application State ===")
+        debug_info.append(f"Current Filter: {self.current_filter}")
+        debug_info.append(f"Displayed Widgets: {len(self.opportunity_widgets)}")
+        
+        # User info
+        if self.current_user:
+            debug_info.append(f"\nCurrent User:")
+            debug_info.append(f"ID: {self.current_user.id}")
+            debug_info.append(f"Name: {self.current_user.first_name} {self.current_user.last_name}")
+            debug_info.append(f"Role: {self.current_user.role}")
+            debug_info.append(f"Team: {self.current_user.team}")
+        
+        # Recent errors
+        if hasattr(self, '_last_error'):
+            debug_info.append(f"\nLast Error: {self._last_error}")
+        
+        self.debug_dialog.debug_text.setText("\n".join(debug_info))
+        self.debug_dialog.show()
+        self.debug_dialog.raise_()
+        self.debug_dialog.activateWindow()
         
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handle closing of the dashboard window and cleanup all resources"""
@@ -444,16 +634,18 @@ class DashboardWidget(QWidget):
             )
             
             # Apply status filter if set
-            if hasattr(self, 'status_filter') and self.status_filter.currentText() != "All":
-                query = query.filter(sql_cast(Opportunity.status, String).ilike(self.status_filter.currentText()))
+            if hasattr(self, 'status_filter') and self.status_filter.currentText() and self.status_filter.currentText() != "All":
+                query = query.filter(sql_cast(Opportunity.status, String).ilike(self.status_filter.currentText().lower()))
                 
             # Apply assignment filter if set
-            if hasattr(self, 'assignment_filter'):
+            if hasattr(self, 'assignment_filter') and self.assignment_filter.currentText():
                 assignment = self.assignment_filter.currentText()
                 if assignment == "Created by me":
                     query = query.filter(Opportunity.creator_id == self.current_user.id)
                 elif assignment == "Assigned to me":
                     query = query.filter(Opportunity.acceptor_id == self.current_user.id)
+                elif assignment == "Unassigned":
+                    query = query.filter(Opportunity.acceptor_id.is_(None))
         
         # Apply date filters if they exist and are set
         if hasattr(self, 'date_from') and hasattr(self, 'date_to'):
@@ -484,6 +676,9 @@ class DashboardWidget(QWidget):
                 # Get opportunities based on filter
                 opportunities = self.get_filtered_opportunities(db)
                 
+                # Store last error if any
+                self._last_error = None
+                
                 # Mark new opportunities as viewed and update toolbar
                 parent = self.parent()
                 if parent and hasattr(parent, 'toolbar'):
@@ -501,8 +696,8 @@ class DashboardWidget(QWidget):
                 self.opportunities_container.adjustSize()
                 
             except Exception as e:
+                self._last_error = str(e)
                 print(f"Error loading opportunities: {str(e)}")
-                import traceback
                 print(traceback.format_exc())
             finally:
                 db.close()
@@ -681,7 +876,7 @@ class DashboardWidget(QWidget):
                 details_layout.setSpacing(8)
                 
                 # Add systems info
-                if opportunity.systems:
+                if opportunity.systems or opportunity.systems_rel:
                     systems_frame = QFrame()
                     systems_frame.setStyleSheet("""
                         QFrame {
@@ -693,14 +888,23 @@ class DashboardWidget(QWidget):
                     systems_layout = QVBoxLayout(systems_frame)
                     systems_layout.setSpacing(6)
                     
-                    for system_data in opportunity.systems:
-                        system_text = f"• {system_data['system']}"
-                        if system_data.get('affected_portions'):
-                            system_text += f": {', '.join(system_data['affected_portions'])}"
-                        system_label = QLabel(system_text)
-                        system_label.setStyleSheet("color: #cccccc; font-size: 12px;")
-                        system_label.setWordWrap(True)
-                        systems_layout.addWidget(system_label)
+                    # Handle both JSONB systems and relationship systems
+                    if opportunity.systems and isinstance(opportunity.systems, list):
+                        for system_data in opportunity.systems:
+                            system_text = f"• {system_data['system']}"
+                            if system_data.get('affected_portions'):
+                                system_text += f": {', '.join(system_data['affected_portions'])}"
+                            system_label = QLabel(system_text)
+                            system_label.setStyleSheet("color: #cccccc; font-size: 12px;")
+                            system_label.setWordWrap(True)
+                            systems_layout.addWidget(system_label)
+                    
+                    if opportunity.systems_rel:
+                        for system in opportunity.systems_rel:
+                            system_label = QLabel(f"• {system.name}")
+                            system_label.setStyleSheet("color: #cccccc; font-size: 12px;")
+                            system_label.setWordWrap(True)
+                            systems_layout.addWidget(system_label)
                     
                     details_layout.addWidget(systems_frame)
                 
@@ -1280,12 +1484,27 @@ class DashboardWidget(QWidget):
 
     def show_comments_dialog(self, opportunity):
         """Show dialog for viewing and adding comments"""
-        dialog = CommentDialog(opportunity, self)
-        if dialog.exec_() == QDialog.Accepted:
-            comment = dialog.get_comment()
-            if comment:
-                self.add_comment(opportunity, comment)
-                self.do_refresh()  # Refresh to show the new comment
+        try:
+            # Get fresh opportunity data from database
+            db = SessionLocal()
+            fresh_opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
+            if fresh_opp:
+                # Update the opportunity object with fresh data
+                opportunity.comments = fresh_opp.comments
+            db.close()
+            
+            dialog = CommentDialog(opportunity, self)
+            if dialog.exec_() == QDialog.Accepted:
+                comment = dialog.get_comment()
+                if comment:
+                    print(f"Adding comment: {comment}")  # Debug print
+                    # Add the comment and update the dashboard
+                    self.add_comment(opportunity, comment)
+
+        except Exception as e:
+            print(f"Error showing comments dialog: {str(e)}")
+            print("Traceback:", traceback.format_exc())
+            QMessageBox.critical(self, "Error", f"An error occurred while showing comments: {str(e)}")
 
     def add_comment(self, opportunity, comment):
         """Add a comment to an opportunity"""
@@ -1293,22 +1512,32 @@ class DashboardWidget(QWidget):
             now = datetime.now(timezone.utc)
             db = SessionLocal()
             
+            # Get fresh opportunity data
             opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
             if not opp:
-                return
+                print("ERROR: Opportunity not found")
+                return None
             
             # Initialize comments list if it doesn't exist
-            if not opp.comments:
+            if opp.comments is None:
                 opp.comments = []
             
-            # Add the new comment
+            # Add the new comment with consistent structure
             comment_data = {
                 'user_id': str(self.current_user.id),
                 'user_name': f"{self.current_user.first_name} {self.current_user.last_name}",
                 'text': comment,
-                'timestamp': now.strftime("%Y-%m-%d %H:%M")
+                'timestamp': now.isoformat()  # Store as ISO format string
             }
-            opp.comments.append(comment_data)
+            
+            # Debug print
+            print(f"Adding comment: {comment_data}")
+            print(f"Current comments: {opp.comments}")
+            
+            # Append the new comment to the JSONB array
+            opp.comments = opp.comments + [comment_data]
+                
+            print(f"Updated comments: {opp.comments}")
             
             # Create notification for the other party
             target_user_id = opp.creator_id if self.current_user.id != opp.creator_id else opp.acceptor_id
@@ -1323,7 +1552,18 @@ class DashboardWidget(QWidget):
                 )
                 db.add(notification)
             
+            # Commit the changes
             db.commit()
+            print(f"Comment saved successfully. Total comments: {len(opp.comments)}")
+            
+            # Update the original opportunity object with new comments
+            opportunity.comments = opp.comments
+            
+            # Force a refresh of the dashboard to update comment counts
+            self.load_opportunities()
+            
+            # Show success message
+            QMessageBox.information(self, "Success", "Comment added successfully!")
             
         except Exception as e:
             print(f"ERROR adding comment: {str(e)}")
@@ -1419,8 +1659,17 @@ class StatusChangeDialog(QDialog):
         self.setWindowTitle("Status Update")
         self.setMinimumWidth(400)
         
+    def accept(self):
+        """Override accept to validate and store comment before closing"""
+        self.comment = self.comment_edit.toPlainText().strip()
+        if not self.comment:
+            QMessageBox.warning(self, "Empty Response", "Please enter a response before submitting.")
+            return
+        super().accept()
+        
     def get_comment(self):
-        return self.comment_edit.toPlainText().strip()
+        """Return the stored comment"""
+        return self.comment
 
 class CommentDialog(QDialog):
     def __init__(self, opportunity, parent=None):
@@ -1467,11 +1716,23 @@ class CommentDialog(QDialog):
                 """)
                 comment_layout = QVBoxLayout(comment_widget)
                 
-                header = QLabel(f"{comment['user_name']} • {comment['timestamp']}")
+                # Format timestamp if it exists
+                timestamp = comment.get('timestamp', '')
+                if timestamp:
+                    try:
+                        # Parse ISO format timestamp
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        formatted_time = dt.strftime("%Y-%m-%d %H:%M")
+                    except:
+                        formatted_time = timestamp
+                else:
+                    formatted_time = "Unknown time"
+                
+                header = QLabel(f"{comment.get('user_name', 'Unknown User')} • {formatted_time}")
                 header.setStyleSheet("color: #888888; font-size: 11px;")
                 comment_layout.addWidget(header)
                 
-                text = QLabel(comment['text'])
+                text = QLabel(comment.get('text', ''))
                 text.setWordWrap(True)
                 text.setStyleSheet("color: white; font-size: 12px;")
                 comment_layout.addWidget(text)
@@ -1548,5 +1809,14 @@ class CommentDialog(QDialog):
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         
+    def accept(self):
+        """Override accept to validate and store comment before closing"""
+        self.comment = self.comment_edit.toPlainText().strip()
+        if not self.comment:
+            QMessageBox.warning(self, "Empty Response", "Please enter a response before submitting.")
+            return
+        super().accept()
+        
     def get_comment(self):
-        return self.comment_edit.toPlainText().strip() 
+        """Return the stored comment"""
+        return self.comment 
