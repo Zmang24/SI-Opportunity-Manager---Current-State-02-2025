@@ -31,6 +31,9 @@ import traceback
 from typing import Optional, Dict, List, Union, cast, Any, Protocol, TypeVar, TYPE_CHECKING
 import asyncio
 import json
+from app.ui.login import LoginWindow
+from app.ui.toolbar import ToolBar
+from app.utils.dependency_checker import check_dependencies
 
 T = TypeVar('T')
 
@@ -1316,26 +1319,28 @@ class LoadingOverlay(QWidget):
         painter.drawRoundedRect(self.rect(), 15, 15)  # Added rounded corners
 
 class MainWindow(QMainWindow):
-    def __init__(self, parent: Optional[QMainWindow] = None) -> None:
+    def __init__(self, parent=None):
         super().__init__(parent)
+        
+        # Check dependencies before proceeding
+        if not check_dependencies():
+            QMessageBox.critical(
+                self,
+                "Dependency Error",
+                "Required dependencies could not be installed. The application will now close."
+            )
+            sys.exit(1)
+            
         self.current_user = None
         self.profile = None
-        self.opportunity_form = None
         self.dashboard = None
+        self.toolbar = None
+        self.opportunity_form = None
         self.management_portal = None
         
-        # Set window title for debugging
-        self.setWindowTitle("SI Opportunity Manager - Main Window")
+        # Show login window
+        self.show_login()
         
-        # Hide main window initially - will be shown after auth
-        self.setVisible(False)
-        
-        # Initialize UI
-        self.initUI()
-        
-        # Debug print window info
-        print(f"DEBUG: MainWindow initialized - Title: {self.windowTitle()}, Visible: {self.isVisible()}")
-
     def _process_asyncio_events(self):
         """Process asyncio events in the Qt event loop"""
         try:
