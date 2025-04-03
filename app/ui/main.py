@@ -365,6 +365,10 @@ class FloatingToolbar(QWidget):
                 self.dashboard_badge.hide()
                 self.dashboard_badge.raise_()
                 print("DEBUG: Dashboard badge initialized at position:", self.dashboard_badge.pos())
+                
+                # Add right-click menu for dashboard button to reset notifications
+                btn.setContextMenuPolicy(Qt.CustomContextMenu)
+                btn.customContextMenuRequested.connect(self.show_dashboard_menu)
             elif btn_id == "management":
                 btn.clicked.connect(lambda: self.parent().show_management_portal() if self.parent() and self.parent().current_user else None)
             elif btn_id == "profile":
@@ -723,15 +727,22 @@ class FloatingToolbar(QWidget):
         
         db = SessionLocal()
         try:
-            # Check new opportunities (notify about all new tickets)
+            # Check new opportunities (notify about new tickets that actually need attention)
             new_opportunities = db.query(Opportunity).filter(
-                Opportunity.status.ilike("New"),  # Case-insensitive status check
+                Opportunity.status == "New",  # Exact match for "New" status only
                 Opportunity.creator_id != str(self.parent().current_user.id)  # Don't notify for own tickets
             ).all()
             
+            # Reset viewed_opportunities if it contains ids for tickets that are no longer "New"
+            # This prevents phantom notifications for tickets that have been updated
+            all_new_opps_ids = {opp.id for opp in new_opportunities}
+            self.viewed_opportunities = {opp_id for opp_id in self.viewed_opportunities if opp_id in all_new_opps_ids}
+            
             # Get opportunities that haven't been viewed
             unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
-            print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed opportunities")
+            print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed NEW opportunities")
+            print(f"DEBUG: Total viewed opportunities: {len(self.viewed_opportunities)}")
+            print(f"DEBUG: Total new opportunities: {len(new_opportunities)}")
             
             # Check new notifications (these are already filtered by user_id)
             new_notifications = db.query(Notification).filter(
@@ -765,7 +776,7 @@ class FloatingToolbar(QWidget):
             if total_count > 0 and (current_time - self.last_reminder_time).total_seconds() > 300:
                 self.show_windows_notification(
                     "Reminder",
-                    f"You have {total_count} unviewed items in your dashboard"
+                    f"You have {total_count} unviewed items requiring attention"
                 )
                 self.last_reminder_time = current_time
             
@@ -784,6 +795,7 @@ class FloatingToolbar(QWidget):
             
         except Exception as e:
             print(f"Error checking updates: {str(e)}")
+            traceback.print_exc()
         finally:
             db.close()
 
@@ -794,6 +806,12 @@ class FloatingToolbar(QWidget):
             if not hasattr(self, 'toaster'):
                 self.toaster = ToastNotifier()
             
+            # Get absolute path to app icon for notification
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                    'resources', 'SI Opportunity Manager LOGO.png.png')
+            if not os.path.exists(icon_path):
+                icon_path = None
+            
             # Show the notification in a non-blocking way
             try:
                 self.toaster.show_toast(
@@ -801,7 +819,7 @@ class FloatingToolbar(QWidget):
                     message,
                     duration=5,
                     threaded=True,
-                    icon_path=None  # Let Windows use the app's default icon
+                    icon_path=icon_path
                 )
             except TypeError as te:
                 # Handle the WPARAM error that occurs on some Windows systems
@@ -812,6 +830,16 @@ class FloatingToolbar(QWidget):
             print(f"DEBUG: Showing notification - Title: {title}, Message: {message}")
         except Exception as e:
             print(f"Error showing notification: {str(e)}")
+            traceback.print_exc()
+            
+    def notification_clicked(self):
+        """Handle notification click - open dashboard"""
+        try:
+            print("DEBUG: Notification clicked, opening dashboard")
+            # Use QTimer to ensure this runs in the main thread
+            QTimer.singleShot(0, lambda: self.parent().show_dashboard() if self.parent() and self.parent().current_user else None)
+        except Exception as e:
+            print(f"Error handling notification click: {str(e)}")
             traceback.print_exc()
 
     def update_notification_badge(self):
@@ -1227,19 +1255,68 @@ class FloatingToolbar(QWidget):
             
             db.commit()
             
+            # Get all current NEW opportunities to mark as viewed
+            new_opps = db.query(Opportunity).filter(
+                Opportunity.status == "New",
+                Opportunity.creator_id != str(self.parent().current_user.id)
+            ).all()
+            
+            # Reset viewed_opportunities to only contain current NEW items
+            current_new_ids = {opp.id for opp in new_opps}
+            self.viewed_opportunities = current_new_ids.copy()
+            
+            print(f"DEBUG: Cleared notifications - Marked {len(new_opps)} opportunities as viewed")
+            print(f"DEBUG: Current viewed_opportunities size: {len(self.viewed_opportunities)}")
+            
             # Reset notification count and hide badge
             self.notification_count = 0
             if hasattr(self, 'dashboard_badge'):
                 self.dashboard_badge.hide()
             
-            # Clear viewed sets
-            self.viewed_opportunities.clear()
+            # Clear viewed notifications set
             self.viewed_notifications.clear()
             
         except Exception as e:
             print(f"Error clearing notifications: {str(e)}")
+            traceback.print_exc()
         finally:
             db.close()
+            
+    def reset_all_notifications(self):
+        """Force reset all notification tracking (for troubleshooting)"""
+        try:
+            # Clear all tracked opportunities
+            self.viewed_opportunities.clear()
+            self.viewed_notifications.clear()
+            
+            # Reset counts and badge
+            self.notification_count = 0
+            if hasattr(self, 'dashboard_badge'):
+                self.dashboard_badge.hide()
+                
+            print("DEBUG: Completely reset all notification tracking")
+            
+            # Force immediate refresh of notifications
+            self.check_updates()
+            
+            # Show confirmation
+            self.show_windows_notification(
+                "Notifications Reset",
+                "All notification tracking has been reset. You may see new notifications for previously viewed items."
+            )
+        except Exception as e:
+            print(f"Error resetting notifications: {str(e)}")
+            traceback.print_exc()
+
+    def show_dashboard_menu(self, position):
+        """Display context menu for dashboard button"""
+        menu = QMenu()
+        reset_action = menu.addAction("Reset Notifications")
+        reset_action.triggered.connect(self.reset_all_notifications)
+        
+        # Position menu relative to the dashboard button
+        button_pos = self.buttons["dashboard"].mapToGlobal(position)
+        selected_action = menu.exec_(button_pos)
 
 class LoadingOverlay(QWidget):
     def __init__(self, parent=None):
@@ -1415,18 +1492,37 @@ class MainWindow(QMainWindow):
                 user_obj.last_login = datetime.now(timezone.utc)
                 db.commit()
             
-            # Get total opportunities count for welcome notification
-            total_opportunities = db.query(Opportunity).count()
-            new_opportunities = db.query(Opportunity).filter(
-                Opportunity.status.ilike("New"),
+            # Get detailed statistics for ticket overview
+            new_tickets = db.query(Opportunity).filter(
+                Opportunity.status == "New",
                 Opportunity.creator_id != str(user.id)
             ).count()
             
-            # Show welcome notification with opportunity counts
-            self.toolbar.show_windows_notification(
-                "Welcome to SI Opportunity Manager",
-                f"You have {total_opportunities} total opportunities in your dashboard.\n{new_opportunities} new opportunities require attention."
-            )
+            completed_tickets = db.query(Opportunity).filter(
+                Opportunity.status == "Completed"
+            ).count()
+            
+            in_progress_tickets = db.query(Opportunity).filter(
+                Opportunity.status == "In Progress"
+            ).count()
+            
+            needs_info_tickets = db.query(Opportunity).filter(
+                Opportunity.status == "Needs Info"
+            ).count()
+            
+            own_tickets = db.query(Opportunity).filter(
+                Opportunity.creator_id == str(user.id)
+            ).count()
+            
+            # Build statistics summary
+            stats_summary = f"New Tickets: {new_tickets}\n"
+            stats_summary += f"In Progress: {in_progress_tickets}\n"
+            stats_summary += f"Completed: {completed_tickets}\n"
+            stats_summary += f"Needs Info: {needs_info_tickets}\n"
+            stats_summary += f"Your Tickets: {own_tickets}"
+            
+            # Use QTimer to slightly delay the notification to ensure proper initialization
+            QTimer.singleShot(500, lambda: self.show_startup_notification(stats_summary))
             
             # Start notification check timer
             self.toolbar.check_updates()
@@ -1437,8 +1533,39 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             print(f"Error initializing notifications: {e}")
+            traceback.print_exc()
         finally:
             db.close()
+            
+    def show_startup_notification(self, stats_summary):
+        """Show startup notification with reliable display"""
+        try:
+            print("DEBUG: Showing startup notification")
+            # Force a non-threaded notification for startup to ensure it displays
+            if not hasattr(self.toolbar, 'toaster'):
+                self.toolbar.toaster = ToastNotifier()
+                
+            # Get absolute path to app icon for notification
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                    'resources', 'SI Opportunity Manager LOGO.png.png')
+            if not os.path.exists(icon_path):
+                icon_path = None
+                
+            # Show direct notification without threading for startup
+            self.toolbar.toaster.show_toast(
+                "SI Opportunity Manager - Dashboard Overview",
+                stats_summary,
+                duration=8,
+                threaded=True,  # Still use threaded to avoid blocking UI
+                icon_path=icon_path
+            )
+            
+            # Also print to console as backup
+            print(f"STARTUP NOTIFICATION:\nSI Opportunity Manager - Dashboard Overview\n{stats_summary}")
+            
+        except Exception as e:
+            print(f"Error showing startup notification: {str(e)}")
+            traceback.print_exc()
 
     def on_account_created(self, user):
         self.account_creation.hide()
