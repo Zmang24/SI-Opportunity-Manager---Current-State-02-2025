@@ -421,7 +421,10 @@ class OpportunityForm(QWidget):
                 padding: 0 5px;
             }
         """)
-        vehicle_layout = QHBoxLayout()
+        vehicle_layout = QVBoxLayout()  # Change to vertical to accommodate VIN field
+        
+        # Create top row for year/make/model
+        vehicle_row = QHBoxLayout()
         
         # Create and style combo boxes
         combo_style = """
@@ -453,6 +456,7 @@ class OpportunityForm(QWidget):
         # Connect signals for cascading updates
         self.year_combo.currentTextChanged.connect(self.update_makes)
         self.make_combo.currentTextChanged.connect(self.update_models)
+        self.make_combo.currentTextChanged.connect(self.check_show_vin_field)  # Add this to show/hide VIN field
         
         # Add labels and combos to layout
         for label_text, combo in [
@@ -462,9 +466,9 @@ class OpportunityForm(QWidget):
         ]:
             label = QLabel(label_text)
             label.setStyleSheet("color: #ffffff;")
-            vehicle_layout.addWidget(label)
-            vehicle_layout.addWidget(combo)
-            vehicle_layout.addSpacing(10)
+            vehicle_row.addWidget(label)
+            vehicle_row.addWidget(combo)
+            vehicle_row.addSpacing(10)
             
         # Add custom vehicle button
         add_custom_btn = QPushButton("+")
@@ -487,7 +491,52 @@ class OpportunityForm(QWidget):
                 background-color: #106ebe;
             }
         """)
-        vehicle_layout.addWidget(add_custom_btn)
+        vehicle_row.addWidget(add_custom_btn)
+        
+        # Add the vehicle row to the main vehicle layout
+        vehicle_layout.addLayout(vehicle_row)
+        
+        # Create VIN field row (initially hidden)
+        self.vin_container = QWidget()
+        vin_layout = QHBoxLayout(self.vin_container)
+        vin_layout.setContentsMargins(0, 10, 0, 0)
+        
+        vin_label = QLabel("VIN Number:")
+        vin_label.setStyleSheet("""
+            color: #ffffff;
+            font-weight: bold;
+        """)
+        vin_layout.addWidget(vin_label)
+        
+        self.vin_input = QLineEdit()
+        self.vin_input.setPlaceholderText("Enter Vehicle Identification Number")
+        self.vin_input.setMaxLength(17)  # Standard VIN length
+        self.vin_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #3d3d3d;
+                color: #ffffff;
+                padding: 5px;
+                border: 1px solid #0078d4;
+                border-radius: 3px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #0078d4;
+            }
+        """)
+        vin_layout.addWidget(self.vin_input)
+        
+        # Add information label
+        vin_info = QLabel("★ Highly recommended for BMW vehicles")
+        vin_info.setStyleSheet("""
+            color: #0078d4;
+            font-size: 12px;
+            font-style: italic;
+        """)
+        vin_layout.addWidget(vin_info)
+        
+        # Hide the VIN container initially
+        self.vin_container.hide()
+        vehicle_layout.addWidget(self.vin_container)
             
         vehicle_group.setLayout(vehicle_layout)
         layout.addWidget(vehicle_group)
@@ -890,6 +939,14 @@ class OpportunityForm(QWidget):
         self.attachment_labels.pop(index)
         row_widget.deleteLater()
 
+    def check_show_vin_field(self, make_text):
+        """Show or hide the VIN field based on the selected make"""
+        if make_text.lower() == "bmw":
+            self.vin_container.show()
+        else:
+            self.vin_container.hide()
+            self.vin_input.clear()  # Clear VIN input when hidden
+
     def submit_opportunity(self):
         if not self.validate_form():
             return
@@ -915,8 +972,16 @@ class OpportunityForm(QWidget):
             # Format vehicle information
             vehicle_info = f"{self.year_combo.currentText()} {self.make_combo.currentText()} {self.model_combo.currentText()}"
             
+            # Add VIN to description if provided
+            vin_text = ""
+            if self.make_combo.currentText().lower() == "bmw" and self.vin_input.text().strip():
+                vin_text = f"\nVIN: {self.vin_input.text().strip()}"
+            
             # Combine vehicle info with user's description
-            full_description = f"Vehicle: {vehicle_info}\n\n{self.description.toPlainText()}"
+            full_description = f"Vehicle: {vehicle_info}{vin_text}\n\n{self.description.toPlainText()}"
+            
+            # Get VIN if provided
+            vin = self.vin_input.text().strip() if self.make_combo.currentText().lower() == "bmw" else None
             
             # Create the opportunity
             new_opp = Opportunity(
@@ -925,7 +990,8 @@ class OpportunityForm(QWidget):
                 status='new',
                 systems=systems_data,
                 creator_id=self.current_user_id,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
+                vin=vin  # Add VIN to the database record
             )
             
             db.add(new_opp)
@@ -1007,6 +1073,8 @@ class OpportunityForm(QWidget):
         self.make_combo.clear()
         self.model_combo.clear()
         self.description.clear()
+        self.vin_input.clear()  # Clear VIN input
+        self.vin_container.hide()  # Hide the VIN field
         
         # Clear attachments
         for label in self.attachment_labels:

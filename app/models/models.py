@@ -83,6 +83,7 @@ class Opportunity(Base):
     acceptor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     systems = Column(JSONB, default=list)
     comments = Column(JSONB, default=list)  # Store comments as JSONB array
+    vin = Column(String, nullable=True)  # VIN number for the vehicle, important for BMW
 
     # Relationships
     files = relationship("File", back_populates="opportunity", cascade="all, delete-orphan")
