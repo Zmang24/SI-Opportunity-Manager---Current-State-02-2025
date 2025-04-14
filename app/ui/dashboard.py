@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QScrollArea, QFrame, QMessageBox, QComboBox, QDateEdit,
                            QDialog, QTextEdit)
-from PyQt5.QtCore import Qt, QTimer, QDate, QPoint
-from PyQt5.QtGui import QCloseEvent, QKeySequence
+from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect
+from PyQt5.QtGui import QCloseEvent, QKeySequence, QPainter, QPixmap, QColor
 from app.database.connection import SessionLocal
 from app.models.models import Opportunity, Notification, ActivityLog, User
 from app.config import STORAGE_DIR
@@ -18,6 +18,7 @@ from sqlalchemy import Column, ColumnElement, String, DateTime, Interval
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import cast as sql_cast
 from sqlalchemy import text
+import math  # Add this import at the top
 
 T = TypeVar('T')
 
@@ -79,12 +80,74 @@ class DashboardWidget(QWidget):
         self.refresh_timer.setSingleShot(True)
         self.refresh_timer.timeout.connect(self.do_refresh)
         self.debug_dialog = None
+        # Get local timezone for display
+        self.local_timezone = self.get_local_timezone()
+        # Add refresh animation properties
+        self.refresh_animation = None
+        self.refresh_message = None
+        self.spinner_angle = 0
+        self.spinner_timer = QTimer()
+        self.spinner_timer.timeout.connect(self.update_spinner)
+        self.fade_timer = QTimer()
+        self.fade_timer.timeout.connect(self.fade_message)
+        self.fade_opacity = 1.0
+        
         self.initUI()
         
         # Set initial window size
         screen = QApplication.primaryScreen().availableGeometry()
         self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller default size
         
+    def get_local_timezone(self) -> ZoneInfo:
+        """Get the local timezone from the system"""
+        try:
+            # Try to get the system's timezone
+            local_tz_name = datetime.now().astimezone().tzinfo.tzname(None)
+            
+            # If we have a valid timezone name, use it
+            if local_tz_name:
+                try:
+                    return ZoneInfo(local_tz_name)
+                except Exception:
+                    # If the name is not in the ZoneInfo database, try to map common names
+                    tz_mapping = {
+                        "Eastern Standard Time": "America/New_York",
+                        "Central Standard Time": "America/Chicago", 
+                        "Mountain Standard Time": "America/Denver",
+                        "Pacific Standard Time": "America/Los_Angeles",
+                        "GMT Standard Time": "Europe/London"
+                    }
+                    if local_tz_name in tz_mapping:
+                        return ZoneInfo(tz_mapping[local_tz_name])
+            
+            # Fallbacks
+            # Try getting TZ environment variable
+            if 'TZ' in os.environ:
+                try:
+                    return ZoneInfo(os.environ['TZ'])
+                except Exception:
+                    pass
+                    
+            print(f"Using system timezone detection: {local_tz_name}")
+            # Fallback to UTC if all else fails
+            return ZoneInfo('UTC')
+        except Exception as e:
+            print(f"Error detecting timezone: {e}")
+            return ZoneInfo('UTC')
+    
+    def convert_to_local_time(self, utc_time: datetime) -> datetime:
+        """Convert UTC timestamp to local timezone for display"""
+        if not utc_time:
+            return utc_time
+            
+        # Ensure the datetime has timezone info
+        if utc_time.tzinfo is None:
+            # If no timezone, assume it's UTC
+            utc_time = utc_time.replace(tzinfo=ZoneInfo('UTC'))
+        
+        # Convert to local timezone
+        return utc_time.astimezone(self.local_timezone)
+    
     def keyPressEvent(self, event):
         """Handle key press events"""
         if event.key() == Qt.Key_5 and event.modifiers() == Qt.ControlModifier:
@@ -541,9 +604,9 @@ class DashboardWidget(QWidget):
         layout.addLayout(header_layout)
         
         # Create scroll area for opportunities
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("""
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("""
             QScrollArea {
                 border: none;
                 background-color: transparent;
@@ -572,8 +635,34 @@ class DashboardWidget(QWidget):
         self.opportunities_layout.setSpacing(16)
         self.opportunities_layout.setContentsMargins(0, 0, 0, 0)
         
-        scroll.setWidget(self.opportunities_container)
-        layout.addWidget(scroll)
+        self.scroll_area.setWidget(self.opportunities_container)
+        layout.addWidget(self.scroll_area)
+        
+        # Create refresh animation components (initially hidden)
+        self.refresh_animation = QLabel(self)
+        self.refresh_animation.setFixedSize(40, 40)
+        self.refresh_animation.setStyleSheet("""
+            QLabel {
+                background-color: rgba(0, 0, 0, 180);
+                border-radius: 20px;
+            }
+        """)
+        self.refresh_animation.hide()
+        
+        self.refresh_message = QLabel("Refreshing...", self)
+        self.refresh_message.setStyleSheet("""
+            QLabel {
+                color: #0078d4;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: rgba(30, 30, 30, 220);
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+        """)
+        self.refresh_message.setAlignment(Qt.AlignCenter)
+        self.refresh_message.adjustSize()
+        self.refresh_message.hide()
         
         self.setLayout(layout)
         self.setStyleSheet("background-color: #1e1e1e;")
@@ -667,6 +756,10 @@ class DashboardWidget(QWidget):
             return
             
         self.is_loading = True
+        
+        # Show refresh animation
+        self.show_refresh_animation()
+        
         try:
             # Clear existing widgets
             self.cleanup_widgets()
@@ -725,6 +818,8 @@ class DashboardWidget(QWidget):
                 
         finally:
             self.is_loading = False
+            # Hide spinner and show confirmation
+            self.hide_refresh_animation()
 
     def do_refresh(self):
         """Actually perform the refresh"""
@@ -732,6 +827,10 @@ class DashboardWidget(QWidget):
             return
             
         self.is_loading = True
+        
+        # Show refresh animation
+        self.show_refresh_animation()
+        
         db = SessionLocal()
         try:
             # Clear existing widgets
@@ -776,6 +875,9 @@ class DashboardWidget(QWidget):
         finally:
             self.is_loading = False
             db.close()
+            
+            # Hide spinner and show confirmation
+            self.hide_refresh_animation()
 
     def add_opportunity_widget(self, opportunity: Opportunity) -> Optional[QFrame]:
         """Add a widget for displaying an opportunity"""
@@ -835,7 +937,9 @@ class DashboardWidget(QWidget):
                 
                 # Add created time
                 if opportunity.created_at:
-                    created_time = opportunity.created_at.strftime("%Y-%m-%d %H:%M")
+                    # Convert to local time for display
+                    local_created_time = self.convert_to_local_time(opportunity.created_at)
+                    created_time = local_created_time.strftime("%Y-%m-%d %H:%M")
                     time_text.append(f"Created: {created_time}")
                 
                 # Add acceptor info if assigned
@@ -846,6 +950,11 @@ class DashboardWidget(QWidget):
                         total_time = opportunity.response_time if opportunity.response_time else None
                         work_time = opportunity.work_time if opportunity.work_time else None
                         
+                        # Convert completed time to local time
+                        if opportunity.completed_at:
+                            local_completed_time = self.convert_to_local_time(opportunity.completed_at)
+                            completed_time = local_completed_time.strftime("%Y-%m-%d %H:%M")
+                            time_text.append(f"Completed: {completed_time}")
                         time_info_parts = []
                         if total_time:
                             time_info_parts.append(f"Total Time: {self.format_duration(total_time)}")
@@ -1063,7 +1172,9 @@ class DashboardWidget(QWidget):
                 
                 # Created timestamp
                 if opportunity.created_at:
-                    created_time = opportunity.created_at.strftime("%Y-%m-%d %H:%M")
+                    # Convert to local time for display
+                    local_created_time = self.convert_to_local_time(opportunity.created_at)
+                    created_time = local_created_time.strftime("%Y-%m-%d %H:%M")
                     created_label = QLabel(f"Created: {created_time}")
                     created_label.setStyleSheet("color: #888888; font-size: 12px;")
                     time_row.addWidget(created_label)
@@ -1078,14 +1189,8 @@ class DashboardWidget(QWidget):
                     else:
                         acceptor_label = QLabel(f"Assigned to: {acceptor.first_name} {acceptor.last_name}")
                         acceptor_label.setStyleSheet("color: #888888; font-size: 12px;")
-                        time_row.addWidget(acceptor_label)
-                        
-                        if opportunity.status.lower() == "in progress":
-                            duration = datetime.now(timezone.utc) - opportunity.created_at
-                            time_info = QLabel(f"⏱ Active for {self.format_duration(duration)}")
-                            time_info.setStyleSheet("color: #888888; font-size: 12px;")
-                        else:
-                            time_info = QLabel("")
+                        time_info = QLabel(f"⏱ Active for {self.format_duration(datetime.now(timezone.utc) - opportunity.created_at)}")
+                        time_info.setStyleSheet("color: #888888; font-size: 12px;")
                     
                     time_row.addWidget(time_info)
                 
@@ -1216,7 +1321,7 @@ class DashboardWidget(QWidget):
             
         except Exception as e:
             print(f"Error creating opportunity widget: {str(e)}")
-            print("Traceback:", traceback.format_exc())
+            traceback.print_exc()
             return None
 
     def format_file_size(self, size_in_bytes):
@@ -1607,6 +1712,124 @@ class DashboardWidget(QWidget):
         finally:
             db.close()
 
+    def show_refresh_animation(self):
+        """Show the refresh animation in the center of the view"""
+        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
+            return
+            
+        # Position in center of visible area
+        viewport_rect = self.scroll_area.viewport().rect()
+        global_pos = self.scroll_area.viewport().mapToGlobal(viewport_rect.center())
+        local_pos = self.mapFromGlobal(global_pos)
+        
+        # Position the spinner
+        self.refresh_animation.move(local_pos.x() - 20, local_pos.y() - 20)
+        self.refresh_animation.raise_()  # Make sure it's on top
+        self.refresh_animation.show()
+        
+        # Start spinner animation
+        self.spinner_angle = 0
+        self.spinner_timer.start(50)  # Update every 50ms
+        
+        # Update immediately to show first frame
+        self.update_spinner()
+        print("DEBUG: Showing refresh animation")
+
+    def hide_refresh_animation(self):
+        """Hide refresh animation and show confirmation"""
+        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
+            return
+            
+        # Stop and hide spinner
+        self.spinner_timer.stop()
+        self.refresh_animation.hide()
+        
+        # Show "Refreshed!" message where the spinner was
+        self.refresh_message.setText("Refreshed!")
+        self.refresh_message.adjustSize()
+        
+        pos = self.refresh_animation.pos()
+        self.refresh_message.move(
+            pos.x() - (self.refresh_message.width() - self.refresh_animation.width()) // 2,
+            pos.y() - (self.refresh_message.height() - self.refresh_animation.height()) // 2
+        )
+        
+        # Show with full opacity
+        self.fade_opacity = 1.0
+        self.refresh_message.setStyleSheet("""
+            QLabel {
+                color: #0078d4;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: rgba(30, 30, 30, 220);
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+        """)
+        self.refresh_message.raise_()  # Make sure it's on top
+        self.refresh_message.show()
+        
+        # Start fade timer
+        self.fade_timer.start(50)  # Fade over time
+        print("DEBUG: Showing refresh completion message")
+        
+    def update_spinner(self):
+        """Update the spinner animation frame"""
+        if not self.refresh_animation or not self.refresh_animation.isVisible():
+            return
+            
+        self.spinner_angle = (self.spinner_angle + 10) % 360
+        
+        # Draw the spinner
+        pixmap = QPixmap(40, 40)
+        pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Set color for the spinner
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#0078d4"))
+        
+        # Draw the spinning arc
+        rect = QRect(5, 5, 30, 30)
+        painter.drawPie(rect, self.spinner_angle * 16, 120 * 16)  # 120 degrees arc
+        
+        # Add a white dot at the end of the arc for better visibility
+        end_angle = (self.spinner_angle + 120) % 360
+        end_x = 20 + 15 * math.cos(math.radians(end_angle))
+        end_y = 20 + 15 * math.sin(math.radians(end_angle))
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(QPoint(int(end_x), int(end_y)), 3, 3)
+        
+        painter.end()
+        
+        self.refresh_animation.setPixmap(pixmap)
+        
+    def fade_message(self):
+        """Fade out the refresh confirmation message"""
+        if not self.refresh_message or not self.refresh_message.isVisible():
+            self.fade_timer.stop()
+            return
+            
+        self.fade_opacity -= 0.05
+        if self.fade_opacity <= 0:
+            self.refresh_message.hide()
+            self.fade_timer.stop()
+            return
+            
+        # Update opacity using stylesheet
+        self.refresh_message.setStyleSheet(f"""
+            QLabel {{
+                color: #0078d4;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: rgba(255, 255, 255, {int(220 * self.fade_opacity)});
+                border-radius: 4px;
+                padding: 6px 10px;
+            }}
+        """)
+        
 class StatusChangeDialog(QDialog):
     def __init__(self, opportunity, new_status, parent=None):
         super().__init__(parent)
