@@ -391,7 +391,7 @@ class DashboardWidget(QWidget):
                 color: #2196F3;
             }
         """)
-        refresh_btn.clicked.connect(self.load_opportunities)
+        refresh_btn.clicked.connect(lambda: self.load_opportunities(show_refresh_animation=True))
         title_row.addWidget(refresh_btn, alignment=Qt.AlignRight)
         header_layout.addLayout(title_row)
         
@@ -750,15 +750,22 @@ class DashboardWidget(QWidget):
         
         return query.order_by(Opportunity.created_at.desc()).all()
 
-    def load_opportunities(self):
-        """Load opportunities based on current filter"""
+    def load_opportunities(self, show_refresh_animation=False):
+        """Load opportunities based on current filter
+        
+        Args:
+            show_refresh_animation: Whether to show the refresh animation
+                                   True when triggered by refresh button,
+                                   False during initial load or other automatic calls
+        """
         if self.is_loading:
             return
             
         self.is_loading = True
         
-        # Show refresh animation
-        self.show_refresh_animation()
+        # Only show refresh animation when explicitly requested (e.g., from refresh button)
+        if show_refresh_animation:
+            self.show_refresh_animation()
         
         try:
             # Clear existing widgets
@@ -818,18 +825,25 @@ class DashboardWidget(QWidget):
                 
         finally:
             self.is_loading = False
-            # Hide spinner and show confirmation
-            self.hide_refresh_animation()
+            
+            # Only show refresh confirmation when animation was shown
+            if show_refresh_animation:
+                self.hide_refresh_animation()
 
-    def do_refresh(self):
-        """Actually perform the refresh"""
+    def do_refresh(self, show_refresh_animation=False):
+        """Actually perform the refresh
+        
+        Args:
+            show_refresh_animation: Whether to show the refresh animation
+        """
         if self.is_loading:
             return
             
         self.is_loading = True
         
-        # Show refresh animation
-        self.show_refresh_animation()
+        # Only show refresh animation when explicitly requested
+        if show_refresh_animation:
+            self.show_refresh_animation()
         
         db = SessionLocal()
         try:
@@ -876,8 +890,9 @@ class DashboardWidget(QWidget):
             self.is_loading = False
             db.close()
             
-            # Hide spinner and show confirmation
-            self.hide_refresh_animation()
+            # Only show refresh confirmation when animation was shown
+            if show_refresh_animation:
+                self.hide_refresh_animation()
 
     def add_opportunity_widget(self, opportunity: Opportunity) -> Optional[QFrame]:
         """Add a widget for displaying an opportunity"""
