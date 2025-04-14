@@ -676,17 +676,38 @@ class DashboardWidget(QWidget):
                 # Get opportunities based on filter
                 opportunities = self.get_filtered_opportunities(db)
                 
+                print(f"DEBUG: DashboardWidget loaded {len(opportunities)} opportunities with filter '{self.current_filter}'")
+                
                 # Store last error if any
                 self._last_error = None
                 
                 # Mark new opportunities as viewed and update toolbar
+                # Important: This must be consistent with how the notification system identifies "new" tickets
                 parent = self.parent()
                 if parent and hasattr(parent, 'toolbar'):
+                    marked_count = 0
+                    
+                    # Dump the current filter and all the statuses for debugging
+                    print(f"\nDEBUG: Dashboard refresh showing filter '{self.current_filter}'")
+                    status_counts = {}
                     for opp in opportunities:
-                        if opp.status.lower() == "new":
-                            parent.toolbar.viewed_opportunities.add(opp.id)
-                    # Update notification badge
-                    parent.toolbar.check_updates()
+                        status = opp.status.lower() if opp.status else "unknown"
+                        status_counts[status] = status_counts.get(status, 0) + 1
+                    print(f"DEBUG: Status distribution in refresh view: {status_counts}")
+                    
+                    # For all new status items visible in any view - case-insensitive
+                    for opp in opportunities:
+                        # Check status case-insensitively
+                        if opp.status and opp.status.lower() == "new":
+                            if opp.id not in parent.toolbar.viewed_opportunities:
+                                print(f"DEBUG: Dashboard refresh marking opportunity as viewed: {opp.id} (Status: {opp.status}, Title: {opp.title})")
+                                parent.toolbar.viewed_opportunities.add(opp.id)
+                                marked_count += 1
+                    
+                    if marked_count > 0:
+                        print(f"DEBUG: Dashboard refresh marked {marked_count} opportunities as viewed")
+                        # Update notification badge
+                        parent.toolbar.check_updates()
                 
                 # Add opportunity widgets
                 for opportunity in opportunities:
@@ -719,14 +740,27 @@ class DashboardWidget(QWidget):
             # Get opportunities based on filter
             opportunities = self.get_filtered_opportunities(db)
             
+            print(f"DEBUG: DashboardWidget refreshed {len(opportunities)} opportunities with filter '{self.current_filter}'")
+            
             # Mark new opportunities as viewed and update toolbar
+            # Important: This must be consistent with how the notification system identifies "new" tickets
             parent = self.parent()
             if parent and hasattr(parent, 'toolbar'):
+                marked_count = 0
+                
+                # For all new status items visible in any view
                 for opp in opportunities:
-                    if opp.status.lower() == "new":
-                        parent.toolbar.viewed_opportunities.add(opp.id)
-                # Update notification badge
-                parent.toolbar.check_updates()
+                    # Check status case-insensitively
+                    if opp.status and opp.status.lower() == "new":
+                        if opp.id not in parent.toolbar.viewed_opportunities:
+                            print(f"DEBUG: Dashboard marking opportunity as viewed: {opp.id} (Status: {opp.status})")
+                            parent.toolbar.viewed_opportunities.add(opp.id)
+                            marked_count += 1
+                
+                if marked_count > 0:
+                    print(f"DEBUG: Dashboard marked {marked_count} opportunities as viewed")
+                    # Update notification badge
+                    parent.toolbar.check_updates()
             
             # Add opportunity widgets
             for opportunity in opportunities:

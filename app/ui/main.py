@@ -22,11 +22,12 @@ from app.ui.account_creation import AccountCreationWidget
 from app.ui.settings import SettingsWidget
 from app.ui.management_portal import ManagementPortal
 from app.ui.profile import ProfileWidget
+from app.ui.notifications import notification_manager
 from app.database.connection import SessionLocal
 from app.models.models import Opportunity, Notification, User
 from datetime import datetime, timedelta, timezone
-from win10toast import ToastNotifier
-from sqlalchemy import and_, or_
+from zoneinfo import ZoneInfo  # Import ZoneInfo for more robust timezone handling
+from sqlalchemy import and_, or_, text
 import traceback
 from typing import Optional, Dict, List, Union, cast, Any, Protocol, TypeVar, TYPE_CHECKING
 import asyncio
@@ -195,11 +196,24 @@ class FloatingToolbar(QWidget):
         self.is_pinned = False
         self.drag_position = None
         self.notification_count = 0
-        self.last_checked_time = datetime.now(timezone.utc) - timedelta(minutes=5)
-        self.last_reminder_time = datetime.now(timezone.utc)  # Initialize last reminder time
+        
+        # Initialize with ZoneInfo for more robust timezone handling
+        try:
+            utc = ZoneInfo('UTC')
+            print("DEBUG: Using ZoneInfo for timezone handling")
+            current_time = datetime.now(utc)
+            self.last_checked_time = current_time - timedelta(minutes=5)
+            self.last_reminder_time = current_time  # Initialize last reminder time
+            print(f"DEBUG: Initialized last_checked_time to {self.last_checked_time}")
+            print(f"DEBUG: Initialized last_reminder_time to {self.last_reminder_time}")
+        except Exception as e:
+            print(f"DEBUG: Error initializing timezone with ZoneInfo, falling back to standard timezone: {str(e)}")
+            # Fallback to standard timezone if ZoneInfo is not available
+            self.last_checked_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+            self.last_reminder_time = datetime.now(timezone.utc)
+            
         self.viewed_opportunities = set()
         self.viewed_notifications = set()
-        self.toaster = ToastNotifier()
         
         # Load last position or set default
         self.load_position()
@@ -216,7 +230,7 @@ class FloatingToolbar(QWidget):
         }
         
         # Initialize with user's theme if available, otherwise use default
-        self.current_theme = "Rainbow Animation"  # Default theme
+        self.current_theme = "Rainbow Animation"
         
         # Load user's theme preference if parent has a current_user with icon_theme
         if parent and hasattr(parent, 'current_user') and hasattr(parent.current_user, 'icon_theme') and parent.current_user.icon_theme:
@@ -232,9 +246,17 @@ class FloatingToolbar(QWidget):
             self.apply_static_theme()
 
         # Initialize notification check timer
+        print("DEBUG: Initializing notification check timer")
         self.notification_timer = QTimer(self)
         self.notification_timer.timeout.connect(self.check_updates)
-        self.notification_timer.start(30000)  # Check every 30 seconds
+        check_interval = 30000  # Check every 30 seconds (30000 ms)
+        print(f"DEBUG: Starting notification timer with interval of {check_interval}ms")
+        self.notification_timer.start(check_interval)
+        print("DEBUG: Notification timer started")
+        
+        # Run an immediate check after initialization
+        QTimer.singleShot(2000, lambda: self.check_updates())
+        print("DEBUG: Scheduled immediate update check after 2 seconds")
 
     def initUI(self):
         # Main layout
@@ -720,124 +742,255 @@ class FloatingToolbar(QWidget):
         """Check for new opportunities and notifications"""
         if not self.parent() or not self.parent().current_user:
             return
-            
-        current_time = datetime.now(timezone.utc)
-        print(f"\nDEBUG: Checking updates at {current_time}")
-        print(f"DEBUG: Last check time was {self.last_checked_time}")
         
-        db = SessionLocal()
         try:
-            # Check new opportunities (notify about new tickets that actually need attention)
-            new_opportunities = db.query(Opportunity).filter(
-                Opportunity.status == "New",  # Exact match for "New" status only
-                Opportunity.creator_id != str(self.parent().current_user.id)  # Don't notify for own tickets
-            ).all()
+            # Use ZoneInfo for more robust timezone handling
+            utc = ZoneInfo('UTC')
+            current_time = datetime.now(utc)
+            print(f"\nDEBUG: Checking updates at {current_time}")
+            print(f"DEBUG: Last check time was {self.last_checked_time}")
+            print(f"DEBUG: Last reminder time was {self.last_reminder_time}")
             
-            # Reset viewed_opportunities if it contains ids for tickets that are no longer "New"
-            # This prevents phantom notifications for tickets that have been updated
-            all_new_opps_ids = {opp.id for opp in new_opportunities}
-            self.viewed_opportunities = {opp_id for opp_id in self.viewed_opportunities if opp_id in all_new_opps_ids}
-            
-            # Get opportunities that haven't been viewed
-            unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
-            print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed NEW opportunities")
-            print(f"DEBUG: Total viewed opportunities: {len(self.viewed_opportunities)}")
-            print(f"DEBUG: Total new opportunities: {len(new_opportunities)}")
-            
-            # Check new notifications (these are already filtered by user_id)
-            new_notifications = db.query(Notification).filter(
-                Notification.user_id == str(self.parent().current_user.id),
-                Notification.read == False
-            ).all()
-            
-            print(f"DEBUG: Found {len(new_notifications)} new notifications")
-            
-            # Update total notification count (unviewed opportunities + unread notifications)
-            total_count = len(unviewed_opportunities) + len(new_notifications)
-            print(f"DEBUG: Total notification count: {total_count}")
-            
-            # Only update notification count if it's different
-            if total_count != self.notification_count:
-                self.notification_count = total_count
-                self.update_notification_badge()
-            
-            # Show notifications for new opportunities since last check
-            for opp in new_opportunities:
-                if opp.id not in self.viewed_opportunities and opp.created_at > self.last_checked_time:
-                    # Show detailed notification for this new opportunity
-                    self.show_windows_notification(
-                        "New SI Opportunity",
-                        f"Ticket: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}..."
-                    )
-                    # Mark as viewed
-                    self.viewed_opportunities.add(opp.id)
-            
-            # Show periodic reminder of total unviewed opportunities (every 5 minutes)
-            if total_count > 0 and (current_time - self.last_reminder_time).total_seconds() > 300:
-                self.show_windows_notification(
-                    "Reminder",
-                    f"You have {total_count} unviewed items requiring attention"
-                )
+            # Add time difference debugging for 5-minute reminder
+            try:
+                time_since_reminder = (current_time - self.last_reminder_time).total_seconds()
+                print(f"DEBUG: Seconds since last reminder: {time_since_reminder} (needs to be >300 for reminder)")
+            except Exception as time_err:
+                print(f"DEBUG: Error calculating time difference: {str(time_err)}")
+                # If there's an error with the time calculation, reset the reminder time
                 self.last_reminder_time = current_time
+                time_since_reminder = 0
+                print(f"DEBUG: Reset last_reminder_time to {current_time}")
+        
+            db = SessionLocal()
             
-            # Show notifications for other notification types
-            if len(new_notifications) > 0:
-                for notif in new_notifications:
-                    if notif.id not in self.viewed_notifications:
+            # Make sure we use proper transaction management
+            try:
+                # Begin a new transaction
+                db.begin()
+                
+                # Check for new opportunities
+                try:
+                    # SQL version - use case-insensitive matching
+                    new_opportunities_query = text("""
+                        SELECT id, title, display_title, description, status, created_at, creator_id
+                        FROM opportunities 
+                        WHERE LOWER(status) = 'new' 
+                        AND creator_id != :user_id
+                    """)
+                    
+                    result = db.execute(new_opportunities_query, {"user_id": str(self.parent().current_user.id)})
+                    
+                    # Process the raw SQL results into Opportunity objects safely
+                    new_opportunities = []
+
+                    valid_fields = ['id', 'title', 'display_title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
+                    
+                    for row in result:
+                        try:
+                            # Create Opportunity object - only pass expected fields
+                            if hasattr(row, '_asdict'):
+                                row_dict = row._asdict()
+                            elif hasattr(row, '_mapping'):
+                                # For SQLAlchemy 1.4+
+                                row_dict = dict(row._mapping)
+                            else:
+                                # Fallback - direct dict conversion
+                                row_dict = dict(row)
+                                
+                            # Filter row_dict to only include valid fields
+                            filtered_dict = {k: v for k, v in row_dict.items() if k in valid_fields}
+                            
+                            # Create Opportunity object with filtered dict
+                            opp = Opportunity(**filtered_dict)
+                            new_opportunities.append(opp)
+                        except Exception as row_err:
+                            print(f"Error processing row: {str(row_err)}")
+                            continue
+                except Exception as sql_err:
+                    print(f"Error with SQL approach: {str(sql_err)}")
+                    db.rollback()  # Rollback on SQL error before trying ORM
+                    db.begin()     # Start a fresh transaction
+                    
+                    # Fallback to ORM approach with case insensitive filter
+                    try:
+                        new_opportunities = db.query(Opportunity).filter(
+                            Opportunity.status.ilike("new"),
+                            Opportunity.creator_id != str(self.parent().current_user.id)
+                        ).all()
+                    except Exception as orm_err:
+                        print(f"Error with ORM fallback: {str(orm_err)}")
+                        db.rollback()  # Rollback transaction on failure
+                        new_opportunities = []  # Set empty list to avoid errors
+                
+                # Debug logging for better troubleshooting
+                print(f"DEBUG: New opportunities found in DB: {len(new_opportunities)}")
+                for i, opp in enumerate(new_opportunities, 1):
+                    print(f"  {i}. ID: {opp.id}, Title: {opp.title}, Status: {opp.status}, Creator: {opp.creator_id}")
+                
+                # Get all opportunity IDs for cleaning up viewed_opportunities
+                all_new_opps_ids = {opp.id for opp in new_opportunities}
+                print(f"DEBUG: All new opportunity IDs: {all_new_opps_ids}")
+                
+                # Debug before cleaning viewed opportunities set
+                print(f"DEBUG: Viewed opportunities before cleanup: {self.viewed_opportunities}")
+                self.viewed_opportunities = {opp_id for opp_id in self.viewed_opportunities if opp_id in all_new_opps_ids}
+                print(f"DEBUG: Viewed opportunities after cleanup: {self.viewed_opportunities}")
+                
+                # Get opportunities that haven't been viewed
+                unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
+                print(f"DEBUG: Found {len(unviewed_opportunities)} unviewed NEW opportunities")
+                print(f"DEBUG: Total viewed opportunities: {len(self.viewed_opportunities)}")
+                print(f"DEBUG: Total new opportunities: {len(new_opportunities)}")
+                
+                # Check new notifications (these are already filtered by user_id)
+                try:
+                    new_notifications = db.query(Notification).filter(
+                        Notification.user_id == str(self.parent().current_user.id),
+                        Notification.read == False
+                    ).all()
+                    
+                    print(f"DEBUG: Found {len(new_notifications)} new notifications")
+                except Exception as notif_err:
+                    print(f"Error getting notifications: {str(notif_err)}")
+                    db.rollback()  # Rollback transaction on failure
+                    db.begin()     # Start a fresh transaction
+                    new_notifications = []  # Set empty list to avoid errors
+                
+                # Update total notification count (unviewed opportunities + unread notifications)
+                total_count = len(unviewed_opportunities) + len(new_notifications)
+                print(f"DEBUG: Total notification count: {total_count}")
+                
+                # Only update notification count if it's different
+                if total_count != self.notification_count:
+                    self.notification_count = total_count
+                    self.update_notification_badge()
+                
+                # Show notifications for new opportunities since last check
+                for opp in new_opportunities:
+                    if opp.id not in self.viewed_opportunities and opp.created_at > self.last_checked_time:
+                        # Show detailed notification for this new opportunity
+                        print(f"DEBUG: Sending notification for new opportunity: {opp.id} - {opp.title}")
                         self.show_windows_notification(
-                            "New Notification",
-                            notif.message
+                            "New SI Opportunity",
+                            f"Ticket: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}..."
                         )
-                        self.viewed_notifications.add(notif.id)
-            
-            # Update last check time only for future notifications
-            self.last_checked_time = current_time
-            
-        except Exception as e:
-            print(f"Error checking updates: {str(e)}")
-            traceback.print_exc()
-        finally:
-            db.close()
+                        # Mark as viewed to prevent duplicate notifications
+                        self.viewed_opportunities.add(opp.id)
+                        print(f"DEBUG: Marked opportunity as viewed: {opp.id}")
+                
+                # Commit the transaction after all processing is complete
+                db.commit()
+                
+                # Show periodic reminder of total unviewed opportunities (every 5 minutes)
+                try:
+                    current_seconds_since_reminder = (current_time - self.last_reminder_time).total_seconds()
+                    reminder_condition = total_count > 0 and current_seconds_since_reminder > 300
+                    print(f"DEBUG: Reminder condition: {reminder_condition} (total_count={total_count}, seconds_since_reminder={current_seconds_since_reminder})")
+                    if reminder_condition:
+                        print(f"DEBUG: Showing 5-minute reminder notification for {total_count} unviewed items")
+                        self.show_windows_notification(
+                            "Reminder",
+                            f"You have {total_count} unviewed items requiring attention"
+                        )
+                        self.last_reminder_time = current_time
+                        print(f"DEBUG: Updated last_reminder_time to {current_time}")
+                except Exception as reminder_err:
+                    print(f"DEBUG: Error in reminder logic: {str(reminder_err)}")
+                    print(traceback.format_exc())
+                
+                # Show notifications for other notification types
+                if len(new_notifications) > 0:
+                    for notif in new_notifications:
+                        if notif.id not in self.viewed_notifications:
+                            self.show_windows_notification(
+                                "New Notification",
+                                notif.message
+                            )
+                            self.viewed_notifications.add(notif.id)
+                
+                # Update last check time only for future notifications
+                self.last_checked_time = current_time
+                
+            except Exception as db_err:
+                print(f"Database error in check_updates: {str(db_err)}")
+                traceback.print_exc()
+                # Always ensure we rollback on error
+                try:
+                    db.rollback()
+                except:
+                    pass
+            finally:
+                db.close()
+        except Exception as outer_e:
+            print(f"Critical error in check_updates: {str(outer_e)}")
+            print(traceback.format_exc())
 
     def show_windows_notification(self, title, message):
-        """Show Windows notification"""
+        """Show in-app notification"""
         try:
-            # Ensure the toaster is initialized
-            if not hasattr(self, 'toaster'):
-                self.toaster = ToastNotifier()
+            print(f"\nDEBUG: Creating notification - Title: {title}")
+            print(f"DEBUG: Message content: {message[:50]}{'...' if len(message) > 50 else ''}")
             
             # Get absolute path to app icon for notification
             icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                     'resources', 'SI Opportunity Manager LOGO.png.png')
             if not os.path.exists(icon_path):
                 icon_path = None
+                print("DEBUG: Using default icon (icon path not found)")
+            else:
+                print(f"DEBUG: Found icon at {icon_path}")
             
-            # Show the notification in a non-blocking way
-            try:
-                self.toaster.show_toast(
-                    title,
-                    message,
-                    duration=5,
-                    threaded=True,
-                    icon_path=icon_path
-                )
-            except TypeError as te:
-                # Handle the WPARAM error that occurs on some Windows systems
-                print(f"Windows notification error (non-critical): {str(te)}")
-                # Fall back to console notification
-                print(f"NOTIFICATION: {title} - {message}")
-                
-            print(f"DEBUG: Showing notification - Title: {title}, Message: {message}")
+            # Make sure notification_clicked method exists
+            if not hasattr(self, 'notification_clicked') or not callable(self.notification_clicked):
+                print("DEBUG: Warning - notification_clicked method not available or not callable")
+            else:
+                print("DEBUG: notification_clicked method is available")
+            
+            # Use the notification manager to show the notification
+            print("DEBUG: Calling notification_manager.show_notification")
+            notification = notification_manager.show_notification(
+                title,
+                message,
+                icon_path=icon_path,
+                duration=5,
+                callback=self.notification_clicked
+            )
+            
+            print(f"DEBUG: Notification created and displayed - ID: {id(notification)}")
+            return notification
         except Exception as e:
             print(f"Error showing notification: {str(e)}")
             traceback.print_exc()
+            return None
             
     def notification_clicked(self):
         """Handle notification click - open dashboard"""
         try:
             print("DEBUG: Notification clicked, opening dashboard")
-            # Use QTimer to ensure this runs in the main thread
-            QTimer.singleShot(0, lambda: self.parent().show_dashboard() if self.parent() and self.parent().current_user else None)
+            
+            # First check if parent exists and has current_user
+            if not self.parent():
+                print("DEBUG: No parent found for toolbar")
+                return
+                
+            if not self.parent().current_user:
+                print("DEBUG: No current user found, cannot open dashboard")
+                return
+                
+            # Get reference to parent's show_dashboard method
+            show_dashboard_method = getattr(self.parent(), 'show_dashboard', None)
+            if not show_dashboard_method or not callable(show_dashboard_method):
+                print("DEBUG: Parent does not have a valid show_dashboard method")
+                return
+                
+            # Use QTimer to ensure this runs in the main thread with proper delay
+            QTimer.singleShot(100, lambda: self.parent().show_dashboard())
+            
+            # Clear notifications when dashboard is shown
+            QTimer.singleShot(200, lambda: self.clear_notifications() if hasattr(self, 'clear_notifications') else None)
+            
+            print("DEBUG: Successfully triggered dashboard display")
         except Exception as e:
             print(f"Error handling notification click: {str(e)}")
             traceback.print_exc()
@@ -1241,47 +1394,131 @@ class FloatingToolbar(QWidget):
             return False
 
     def clear_notifications(self):
-        """Clear all notifications and reset the badge"""
-        db = SessionLocal()
+        """Clear notifications without resetting viewed items"""
         try:
-            # Mark all notifications as read
-            notifications = db.query(Notification).filter(
-                Notification.user_id == str(self.parent().current_user.id),
-                Notification.read == False
-            ).all()
+            # Get all unread notifications
+            db = SessionLocal()
+            try:
+                # Begin transaction
+                db.begin()
+                
+                # Use case-insensitive SQL query for new opportunities
+                try:
+                    new_opps_query = text("""
+                        SELECT id, title, display_title, description, status, created_at, creator_id
+                        FROM opportunities
+                        WHERE LOWER(status) = 'new'
+                        AND creator_id != :user_id
+                    """)
+                    
+                    result = db.execute(new_opps_query, {"user_id": str(self.parent().current_user.id)})
+                    
+                    # Process the raw SQL results into Opportunity objects safely
+                    new_opps = []
+
+                    valid_fields = ['id', 'title', 'display_title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
+                    
+                    for row in result:
+                        try:
+                            # Create Opportunity object - only pass expected fields
+                            if hasattr(row, '_asdict'):
+                                row_dict = row._asdict()
+                            elif hasattr(row, '_mapping'):
+                                # For SQLAlchemy 1.4+
+                                row_dict = dict(row._mapping)
+                            else:
+                                # Fallback - direct dict conversion
+                                row_dict = dict(row)
+                                
+                            # Filter row_dict to only include valid fields
+                            filtered_dict = {k: v for k, v in row_dict.items() if k in valid_fields}
+                            
+                            # Create Opportunity object with filtered dict
+                            opp = Opportunity(**filtered_dict)
+                            new_opps.append(opp)
+                        except Exception as row_err:
+                            print(f"Error processing row: {str(row_err)}")
+                            continue
+                except Exception as sql_err:
+                    print(f"Error with SQL approach: {str(sql_err)}")
+                    db.rollback()  # Rollback on error
+                    db.begin()     # Start fresh transaction
+                    
+                    # Fallback to ORM approach with case insensitive filter
+                    try:
+                        new_opps = db.query(Opportunity).filter(
+                            Opportunity.status.ilike("new"),
+                            Opportunity.creator_id != str(self.parent().current_user.id)
+                        ).all()
+                    except Exception as orm_err:
+                        print(f"Error with ORM fallback: {str(orm_err)}")
+                        db.rollback()  # Rollback on failure
+                        new_opps = []  # Use empty list to avoid errors
+                
+                # Only add to viewed_opportunities when dashboard is explicitly opened
+                # This ensures we mark all current NEW opportunities as viewed
+                print(f"DEBUG: Adding {len(new_opps)} new opportunities to viewed list")
+                for opp in new_opps:
+                    self.viewed_opportunities.add(opp.id)
+                    print(f"DEBUG: Added opportunity to viewed list: {opp.id}")
+                
+                print(f"DEBUG: Cleared notifications - Marked {len(new_opps)} opportunities as viewed")
+                print(f"DEBUG: Current viewed_opportunities size: {len(self.viewed_opportunities)}")
+                
+                # Reset notification count and hide badge
+                self.notification_count = 0
+                if hasattr(self, 'dashboard_badge'):
+                    self.dashboard_badge.hide()
+                
+                # Clear viewed notifications set
+                self.viewed_notifications.clear()
+                
+                # Commit all changes
+                db.commit()
+                
+            except Exception as e:
+                print(f"Error clearing notifications: {str(e)}")
+                traceback.print_exc()
+                # Ensure we rollback on error
+                try:
+                    db.rollback()
+                except:
+                    pass
+            finally:
+                db.close()
             
-            for notification in notifications:
-                notification.read = True
-            
-            db.commit()
-            
-            # Get all current NEW opportunities to mark as viewed
-            new_opps = db.query(Opportunity).filter(
-                Opportunity.status == "New",
-                Opportunity.creator_id != str(self.parent().current_user.id)
-            ).all()
-            
-            # Reset viewed_opportunities to only contain current NEW items
-            current_new_ids = {opp.id for opp in new_opps}
-            self.viewed_opportunities = current_new_ids.copy()
-            
-            print(f"DEBUG: Cleared notifications - Marked {len(new_opps)} opportunities as viewed")
-            print(f"DEBUG: Current viewed_opportunities size: {len(self.viewed_opportunities)}")
-            
-            # Reset notification count and hide badge
-            self.notification_count = 0
-            if hasattr(self, 'dashboard_badge'):
-                self.dashboard_badge.hide()
-            
-            # Clear viewed notifications set
-            self.viewed_notifications.clear()
-            
-        except Exception as e:
-            print(f"Error clearing notifications: {str(e)}")
+        except Exception as outer_e:
+            print(f"Critical error clearing notifications: {str(outer_e)}")
             traceback.print_exc()
-        finally:
-            db.close()
+
+    def test_notification(self):
+        """Send a test notification to diagnose notification system"""
+        try:
+            print("\nDEBUG: Sending test notification")
+            self.show_windows_notification(
+                "Test Notification", 
+                "This is a test notification to verify the notification system is working properly."
+            )
+            print("DEBUG: Test notification sent")
             
+            # Schedule a test reminder notification in 5 seconds
+            QTimer.singleShot(5000, lambda: self.show_windows_notification(
+                "Test Reminder", 
+                "This is a test reminder notification sent 5 seconds after the first test."
+            ))
+            print("DEBUG: Scheduled test reminder for 5 seconds from now")
+            
+            # Also increase notification count and update badge
+            self.notification_count += 1
+            self.update_notification_badge()
+            print(f"DEBUG: Updated notification badge count to {self.notification_count}")
+            
+            return True
+        except Exception as e:
+            print(f"Error sending test notification: {str(e)}")
+            traceback.print_exc()
+            return False
+
     def reset_all_notifications(self):
         """Force reset all notification tracking (for troubleshooting)"""
         try:
@@ -1299,11 +1536,12 @@ class FloatingToolbar(QWidget):
             # Force immediate refresh of notifications
             self.check_updates()
             
-            # Show confirmation
+            # Show confirmation using custom notification
             self.show_windows_notification(
                 "Notifications Reset",
                 "All notification tracking has been reset. You may see new notifications for previously viewed items."
             )
+            
         except Exception as e:
             print(f"Error resetting notifications: {str(e)}")
             traceback.print_exc()
@@ -1494,20 +1732,20 @@ class MainWindow(QMainWindow):
             
             # Get detailed statistics for ticket overview
             new_tickets = db.query(Opportunity).filter(
-                Opportunity.status == "New",
+                Opportunity.status.ilike("new"),
                 Opportunity.creator_id != str(user.id)
             ).count()
             
             completed_tickets = db.query(Opportunity).filter(
-                Opportunity.status == "Completed"
+                Opportunity.status.ilike("completed")
             ).count()
             
             in_progress_tickets = db.query(Opportunity).filter(
-                Opportunity.status == "In Progress"
+                Opportunity.status.ilike("in progress")
             ).count()
             
             needs_info_tickets = db.query(Opportunity).filter(
-                Opportunity.status == "Needs Info"
+                Opportunity.status.ilike("needs info")
             ).count()
             
             own_tickets = db.query(Opportunity).filter(
@@ -1515,6 +1753,13 @@ class MainWindow(QMainWindow):
             ).count()
             
             # Build statistics summary
+            print(f"\nDEBUG: Dashboard Statistics:")
+            print(f"New Tickets query found: {new_tickets}")
+            print(f"In Progress Tickets: {in_progress_tickets}")
+            print(f"Completed Tickets: {completed_tickets}")
+            print(f"Needs Info Tickets: {needs_info_tickets}")
+            print(f"User's Own Tickets: {own_tickets}")
+            
             stats_summary = f"New Tickets: {new_tickets}\n"
             stats_summary += f"In Progress: {in_progress_tickets}\n"
             stats_summary += f"Completed: {completed_tickets}\n"
@@ -1541,23 +1786,20 @@ class MainWindow(QMainWindow):
         """Show startup notification with reliable display"""
         try:
             print("DEBUG: Showing startup notification")
-            # Force a non-threaded notification for startup to ensure it displays
-            if not hasattr(self.toolbar, 'toaster'):
-                self.toolbar.toaster = ToastNotifier()
-                
+            
             # Get absolute path to app icon for notification
             icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                     'resources', 'SI Opportunity Manager LOGO.png.png')
             if not os.path.exists(icon_path):
                 icon_path = None
                 
-            # Show direct notification without threading for startup
-            self.toolbar.toaster.show_toast(
+            # Show custom notification with longer duration for startup
+            notification_manager.show_notification(
                 "SI Opportunity Manager - Dashboard Overview",
                 stats_summary,
+                icon_path=icon_path,
                 duration=8,
-                threaded=True,  # Still use threaded to avoid blocking UI
-                icon_path=icon_path
+                callback=self.toolbar.notification_clicked
             )
             
             # Also print to console as backup
