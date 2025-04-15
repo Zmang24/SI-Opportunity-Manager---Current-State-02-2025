@@ -8,6 +8,7 @@ class CustomNotification(QWidget):
     """Custom in-app notification that mimics Windows toast notifications"""
     
     clicked = pyqtSignal()  # Signal emitted when notification is clicked
+    mark_as_read = pyqtSignal()  # Signal emitted when mark as read button is clicked
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,11 +51,17 @@ class CustomNotification(QWidget):
         self.fade_out_animation.setEasingCurve(QEasingCurve.InCubic)
         self.fade_out_animation.finished.connect(self.hide)
         
-        # Connect close button
+        # Connect buttons
         self.close_button.clicked.connect(self.start_fade_out)
+        self.mark_read_button.clicked.connect(self.on_mark_as_read)
         
         # Install event filter to handle mouse clicks
         self.installEventFilter(self)
+        
+    def on_mark_as_read(self):
+        """Handle mark as read button click"""
+        self.mark_as_read.emit()
+        self.start_fade_out()
         
     def initUI(self):
         # Main layout
@@ -81,6 +88,25 @@ class CustomNotification(QWidget):
             }
         """)
         
+        # Mark as Read button
+        self.mark_read_button = QPushButton("Mark as Read")
+        self.mark_read_button.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(25, 118, 210, 0.6);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            QPushButton:hover {
+                background-color: rgba(30, 136, 229, 0.7);
+            }
+            QPushButton:pressed {
+                background-color: rgba(21, 101, 192, 0.8);
+            }
+        """)
+        
         # Close button
         self.close_button = QPushButton()
         self.close_button.setFixedSize(16, 16)
@@ -101,6 +127,7 @@ class CustomNotification(QWidget):
         # Add widgets to header
         header_layout.addWidget(self.icon_label)
         header_layout.addWidget(self.title_label, 1)
+        header_layout.addWidget(self.mark_read_button)
         header_layout.addWidget(self.close_button)
         
         # Message content
@@ -120,7 +147,7 @@ class CustomNotification(QWidget):
         main_layout.addWidget(self.message_label)
         
         # Set fixed size for the notification
-        self.setFixedSize(320, 120)
+        self.setFixedSize(380, 120)  # Increased width to accommodate the button
     
     def set_content(self, title, message, icon_path=None):
         """Set the notification content"""
@@ -138,10 +165,19 @@ class CustomNotification(QWidget):
     
     def show_notification(self, duration=5):
         """Show the notification with fade-in animation and auto-close timer"""
-        # Position notification at bottom-right corner of screen
-        screen_geometry = QApplication.desktop().availableGeometry()
+        # Use screen geometry and apply explicit taskbar margin
+        screen_geometry = QApplication.desktop().screenGeometry()
+        
+        # Apply a larger margin for the taskbar (60 pixels)
+        taskbar_margin = 60
+        
         x = screen_geometry.width() - self.width() - 20
-        y = screen_geometry.height() - self.height() - 20
+        y = screen_geometry.height() - self.height() - taskbar_margin
+        
+        # Ensure coordinates are within visible area
+        x = max(x, 10)
+        y = max(y, 10)
+        
         self.move(x, y)
         
         # Show widget and start fade-in
@@ -213,8 +249,9 @@ class NotificationManager:
     def __init__(self):
         self.active_notifications = []
         self.vertical_spacing = 10
+        self.mark_read_callbacks = {}  # Store mark as read callbacks
     
-    def show_notification(self, title, message, icon_path=None, duration=5, callback=None):
+    def show_notification(self, title, message, icon_path=None, duration=5, callback=None, mark_read_callback=None):
         """Show a notification and manage its position"""
         # Create new notification
         notification = CustomNotification()
@@ -226,6 +263,15 @@ class NotificationManager:
             notification.clicked.connect(callback)
             # Store the callback reference to prevent garbage collection
             notification._callback_ref = callback
+        
+        # Connect mark as read callback if provided
+        if mark_read_callback and callable(mark_read_callback):
+            print(f"DEBUG: Connecting mark as read callback")
+            notification.mark_as_read.connect(mark_read_callback)
+            # Store the callback reference to prevent garbage collection
+            notification._mark_read_callback_ref = mark_read_callback
+            # Store in our dict by notification ID for reference
+            self.mark_read_callbacks[id(notification)] = mark_read_callback
         
         # When a notification is closed, remove it from active list and reposition others
         notification.fade_out_animation.finished.connect(
@@ -247,6 +293,9 @@ class NotificationManager:
         """Remove a notification from the active list and reposition others"""
         if notification in self.active_notifications:
             self.active_notifications.remove(notification)
+            # Clean up the reference in the callbacks dict
+            if id(notification) in self.mark_read_callbacks:
+                del self.mark_read_callbacks[id(notification)]
             notification.deleteLater()
             self.reposition_notifications()
     
@@ -255,16 +304,26 @@ class NotificationManager:
         if not self.active_notifications:
             return
             
-        screen_geometry = QApplication.desktop().availableGeometry()
+        # Use screenGeometry and add explicit taskbar margin
+        screen_geometry = QApplication.desktop().screenGeometry()
         notification_width = self.active_notifications[0].width()
         notification_height = self.active_notifications[0].height()
         
+        # Apply a larger taskbar margin (60 pixels)
+        taskbar_margin = 60
+        
+        # Calculate position with taskbar consideration
         x = screen_geometry.width() - notification_width - 20
-        y = screen_geometry.height() - notification_height - 20
+        y = screen_geometry.height() - notification_height - taskbar_margin
         
         # Position notifications from bottom up
         for i, notification in enumerate(reversed(self.active_notifications)):
             notification_y = y - (notification_height + self.vertical_spacing) * i
+            
+            # Ensure we don't position notifications too high up (off screen)
+            if notification_y < 10:
+                notification_y = 10
+                
             notification.move(x, notification_y)
     
     def clear_all(self):

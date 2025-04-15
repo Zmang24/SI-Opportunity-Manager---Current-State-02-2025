@@ -171,12 +171,15 @@ class PeekButton(QPushButton):
 
 class FloatingToolbar(QWidget):
     def __init__(self, parent: Optional['QWidgetType'] = None) -> None:
+        """Initialize the floating toolbar widget"""
         super().__init__(parent)
+        
+        # Set up window properties
         self.setWindowFlags(
+            Qt.FramelessWindowHint | 
+            Qt.WindowStaysOnTopHint |
             Qt.Tool |
-            Qt.FramelessWindowHint |
-            Qt.NoDropShadowWindowHint |
-            Qt.WindowStaysOnTopHint
+            Qt.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -185,17 +188,25 @@ class FloatingToolbar(QWidget):
         # Enable mouse tracking for the toolbar itself
         self.setMouseTracking(True)
         
+        # Initialize tracking properties
+        self.dragging = False
+        self.offset = QPoint()
+        self.is_vertical = True  # Start in vertical mode
+        self.is_pinned = False      # Start unpinned
+        
+        # Initialize notification tracking
+        self.notification_count = 0
+        self.viewed_opportunities = set()  # Track viewed opportunities
+        self.viewed_notifications = set()  # Track viewed notifications
+        self.startup_notification_shown = False  # Track if startup notification was shown
+        
         # Load background image
         self.bg_image_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                     'resources', 'icons', 'Brushed_Bar_horizontal.png')
         self.background_image = QPixmap(self.bg_image_path)
         
-        self.is_vertical = True  # Always start in vertical mode
         self.settings = QSettings('SI Opportunity Manager', 'Toolbar')
         self.initUI()
-        self.is_pinned = False
-        self.drag_position = None
-        self.notification_count = 0
         
         # Initialize with ZoneInfo for more robust timezone handling
         try:
@@ -212,12 +223,6 @@ class FloatingToolbar(QWidget):
             self.last_checked_time = datetime.now(timezone.utc) - timedelta(minutes=5)
             self.last_reminder_time = datetime.now(timezone.utc)
             
-        self.viewed_opportunities = set()
-        self.viewed_notifications = set()
-        
-        # Load last position or set default
-        self.load_position()
-        
         # Add color animation properties
         self.current_hue = 0.0
         self.color_timer = QTimer(self)
@@ -539,52 +544,6 @@ class FloatingToolbar(QWidget):
                 self.layout_button.setIcon(QIcon(rotated_pixmap))
             
             # Set vertical layout dimensions
-            self.setFixedWidth(36)
-            self.setMinimumHeight(460)
-            self.container.setStyleSheet("""
-                QFrame#toolbar_container {
-                    border: none;
-                    min-width: 36px;
-                    max-width: 36px;
-                    min-height: 460px;
-                    padding: 0px;
-                    margin: 0px;
-                    background-color: transparent;
-                }
-            """)
-            
-            # Create new vertical layout with no spacing
-            new_layout = QVBoxLayout()
-            new_layout.setContentsMargins(0, 0, 0, 0)
-            new_layout.setSpacing(0)
-            
-            # Update button sizes for vertical layout
-            for btn in self.buttons.values():
-                btn.setFixedSize(36, 36)
-                btn.setIconSize(QSize(24, 24))
-                
-                # Update button style with increased transparency
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: rgba(43, 43, 43, 0.25);
-                        border: none;
-                        padding: 0px;
-                        margin: 0px;
-                        border-radius: 8px;
-                    }
-                    QPushButton:hover {
-                        background-color: rgba(60, 60, 60, 0.35);
-                    }
-                    QPushButton:pressed {
-                        background-color: rgba(30, 30, 30, 0.45);
-                    }
-                """)
-        else:
-            # Reset layout icon rotation for horizontal mode
-            if hasattr(self, 'layout_button'):
-                self.layout_button.setIcon(QIcon(pixmap))
-            
-            # Set horizontal layout dimensions
             self.setFixedHeight(56)  # Reduced height to better fit background
             self.setMinimumWidth(650)  # Adjusted minimum width
             self.container.setStyleSheet("""
@@ -599,12 +558,12 @@ class FloatingToolbar(QWidget):
                 }
             """)
             
-            # Create new horizontal layout with adjusted margins
-            new_layout = QHBoxLayout()
+            # Create new vertical layout with adjusted margins
+            new_layout = QVBoxLayout()
             new_layout.setContentsMargins(80, 2, 80, 2)  # Reduced margins
             new_layout.setSpacing(8)  # Increased spacing between buttons
             
-            # Update button sizes for horizontal layout
+            # Update button sizes for vertical layout
             for btn in self.buttons.values():
                 btn.setFixedSize(48, 48)  # Smaller buttons
                 btn.setIconSize(QSize(28, 28))  # Slightly smaller icons
@@ -617,6 +576,52 @@ class FloatingToolbar(QWidget):
                         padding: 4px;
                         margin: 0px;
                         border-radius: 12px;
+                    }
+                    QPushButton:hover {
+                        background-color: rgba(60, 60, 60, 0.35);
+                    }
+                    QPushButton:pressed {
+                        background-color: rgba(30, 30, 30, 0.45);
+                    }
+                """)
+        else:
+            # Reset layout icon rotation for horizontal mode
+            if hasattr(self, 'layout_button'):
+                self.layout_button.setIcon(QIcon(pixmap))
+            
+            # Set horizontal layout dimensions
+            self.setFixedWidth(36)
+            self.setMinimumHeight(460)
+            self.container.setStyleSheet("""
+                QFrame#toolbar_container {
+                    border: none;
+                    min-width: 36px;
+                    max-width: 36px;
+                    min-height: 460px;
+                    padding: 0px;
+                    margin: 0px;
+                    background-color: transparent;
+                }
+            """)
+            
+            # Create new horizontal layout with no spacing
+            new_layout = QHBoxLayout()
+            new_layout.setContentsMargins(0, 0, 0, 0)
+            new_layout.setSpacing(0)
+            
+            # Update button sizes for horizontal layout
+            for btn in self.buttons.values():
+                btn.setFixedSize(36, 36)
+                btn.setIconSize(QSize(24, 24))
+                
+                # Update button style with increased transparency
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: rgba(43, 43, 43, 0.25);
+                        border: none;
+                        padding: 0px;
+                        margin: 0px;
+                        border-radius: 8px;
                     }
                     QPushButton:hover {
                         background-color: rgba(60, 60, 60, 0.35);
@@ -731,11 +736,11 @@ class FloatingToolbar(QWidget):
                 new_pos.setY(available_geometry.bottom() - self.height())
                 
             # Only move if position changed and not dragging
-            if new_pos != current_pos and self.drag_position is None:
+            if new_pos != current_pos and self.dragging is False:
                 self.move(new_pos)
             
             # Save position after manual move (when not dragging)
-            if self.drag_position is None:
+            if self.dragging is False:
                 self.save_position()
 
     def check_updates(self):
@@ -762,6 +767,13 @@ class FloatingToolbar(QWidget):
                 time_since_reminder = 0
                 print(f"DEBUG: Reset last_reminder_time to {current_time}")
         
+            # Check if this is the initial check after startup
+            is_initial_check = (current_time - self.last_checked_time).total_seconds() < 20 or self.startup_notification_shown
+            
+            # If startup notification was shown, reset the flag
+            if self.startup_notification_shown:
+                self.startup_notification_shown = False
+                
             db = SessionLocal()
             
             # Make sure we use proper transaction management
@@ -832,10 +844,18 @@ class FloatingToolbar(QWidget):
                 all_new_opps_ids = {opp.id for opp in new_opportunities}
                 print(f"DEBUG: All new opportunity IDs: {all_new_opps_ids}")
                 
-                # Debug before cleaning viewed opportunities set
-                print(f"DEBUG: Viewed opportunities before cleanup: {self.viewed_opportunities}")
+                # Only keep viewed opportunities that are still in the NEW status
+                # This fixes a bug that was causing the viewed_opportunities to be emptied
                 self.viewed_opportunities = {opp_id for opp_id in self.viewed_opportunities if opp_id in all_new_opps_ids}
                 print(f"DEBUG: Viewed opportunities after cleanup: {self.viewed_opportunities}")
+                
+                # If this is initial startup, mark all existing opportunities as viewed
+                # This prevents showing notifications for existing tickets on startup
+                if is_initial_check and len(self.viewed_opportunities) == 0:
+                    print("DEBUG: Initial check - marking all existing opportunities as viewed")
+                    for opp in new_opportunities:
+                        self.viewed_opportunities.add(opp.id)
+                    print(f"DEBUG: Marked {len(new_opportunities)} existing opportunities as viewed")
                 
                 # Get opportunities that haven't been viewed
                 unviewed_opportunities = [opp for opp in new_opportunities if opp.id not in self.viewed_opportunities]
@@ -873,7 +893,8 @@ class FloatingToolbar(QWidget):
                         print(f"DEBUG: Sending notification for new opportunity: {opp.id} - {opp.title}")
                         self.show_windows_notification(
                             "New SI Opportunity",
-                            f"Ticket: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}..."
+                            f"Ticket: {opp.title}\nVehicle: {opp.display_title}\nDescription: {opp.description[:100]}...",
+                            opportunity_id=opp.id
                         )
                         # Mark as viewed to prevent duplicate notifications
                         self.viewed_opportunities.add(opp.id)
@@ -889,9 +910,23 @@ class FloatingToolbar(QWidget):
                     print(f"DEBUG: Reminder condition: {reminder_condition} (total_count={total_count}, seconds_since_reminder={current_seconds_since_reminder})")
                     if reminder_condition:
                         print(f"DEBUG: Showing 5-minute reminder notification for {total_count} unviewed items")
+                        
+                        # Create a more detailed overview similar to startup notification
+                        new_opps_count = len(unviewed_opportunities)
+                        new_notifs_count = len(new_notifications)
+                        
+                        stats_message = f"""
+You have {total_count} unviewed items requiring attention:
+• {new_opps_count} new opportunities
+• {new_notifs_count} unread notifications
+
+Click this notification to view all items in the dashboard.
+Or click 'Mark as Read' to clear without viewing."""
+                        
                         self.show_windows_notification(
-                            "Reminder",
-                            f"You have {total_count} unviewed items requiring attention"
+                            "SI Opportunity Manager",  # Clean title without dash
+                            stats_message,
+                            is_reminder=True
                         )
                         self.last_reminder_time = current_time
                         print(f"DEBUG: Updated last_reminder_time to {current_time}")
@@ -901,12 +936,35 @@ class FloatingToolbar(QWidget):
                 
                 # Show notifications for other notification types
                 if len(new_notifications) > 0:
+                    # Keep track of notification opportunity IDs to avoid duplicates
+                    notified_opportunity_ids = set()
+                    
                     for notif in new_notifications:
                         if notif.id not in self.viewed_notifications:
-                            self.show_windows_notification(
-                                "New Notification",
-                                notif.message
-                            )
+                            # Skip showing individual notifications on startup
+                            if not is_initial_check:
+                                # Skip notifications for opportunities we already showed notifications for
+                                if notif.opportunity_id and notif.opportunity_id in self.viewed_opportunities:
+                                    print(f"DEBUG: Skipping duplicate notification for opportunity: {notif.opportunity_id}")
+                                    self.viewed_notifications.add(notif.id)
+                                    continue
+                                
+                                # Skip if we've already shown a notification for this opportunity in this batch
+                                if notif.opportunity_id and notif.opportunity_id in notified_opportunity_ids:
+                                    print(f"DEBUG: Skipping duplicate notification in current batch for opportunity: {notif.opportunity_id}")
+                                    self.viewed_notifications.add(notif.id)
+                                    continue
+                                
+                                # Track this opportunity ID to avoid duplicate notifications
+                                if notif.opportunity_id:
+                                    notified_opportunity_ids.add(notif.opportunity_id)
+                                
+                                # Show the notification
+                                self.show_windows_notification(
+                                    "New Notification",
+                                    notif.message,
+                                    opportunity_id=notif.opportunity_id
+                                )
                             self.viewed_notifications.add(notif.id)
                 
                 # Update last check time only for future notifications
@@ -926,7 +984,7 @@ class FloatingToolbar(QWidget):
             print(f"Critical error in check_updates: {str(outer_e)}")
             print(traceback.format_exc())
 
-    def show_windows_notification(self, title, message):
+    def show_windows_notification(self, title, message, is_reminder=False, opportunity_id=None):
         """Show in-app notification"""
         try:
             print(f"\nDEBUG: Creating notification - Title: {title}")
@@ -937,24 +995,44 @@ class FloatingToolbar(QWidget):
                                     'resources', 'SI Opportunity Manager LOGO.png.png')
             if not os.path.exists(icon_path):
                 icon_path = None
-                print("DEBUG: Using default icon (icon path not found)")
+                print("DEBUG: Icon not found at expected path")
             else:
                 print(f"DEBUG: Found icon at {icon_path}")
             
-            # Make sure notification_clicked method exists
-            if not hasattr(self, 'notification_clicked') or not callable(self.notification_clicked):
-                print("DEBUG: Warning - notification_clicked method not available or not callable")
-            else:
+            # Check if notification_clicked method exists
+            if hasattr(self, 'notification_clicked'):
                 print("DEBUG: notification_clicked method is available")
+            else:
+                print("DEBUG: notification_clicked method NOT found")
             
-            # Use the notification manager to show the notification
             print("DEBUG: Calling notification_manager.show_notification")
+            
+            # Define mark as read callback
+            def mark_notification_as_read():
+                print(f"DEBUG: Marking notification as read for title: {title}")
+                if opportunity_id:
+                    self.viewed_opportunities.add(opportunity_id)
+                    print(f"DEBUG: Added opportunity {opportunity_id} to viewed list")
+                
+                # Also mark any database notifications as read if this is a notification
+                if title == "New Notification" or is_reminder:
+                    self.mark_notifications_as_read_in_db()
+            
+            # Clean up title by removing dash and text after it
+            clean_title = title.split(' - ')[0] if ' - ' in title else title
+            
+            # Adjust title for reminders to match overview
+            if is_reminder:
+                # Make the reminder use the same format as the startup notification
+                clean_title = "SI Opportunity Manager"
+            
             notification = notification_manager.show_notification(
-                title,
+                clean_title,
                 message,
                 icon_path=icon_path,
-                duration=5,
-                callback=self.notification_clicked
+                duration=5 if not is_reminder else 8,  # Longer display for reminders
+                callback=self.notification_clicked,
+                mark_read_callback=mark_notification_as_read
             )
             
             print(f"DEBUG: Notification created and displayed - ID: {id(notification)}")
@@ -963,7 +1041,42 @@ class FloatingToolbar(QWidget):
             print(f"Error showing notification: {str(e)}")
             traceback.print_exc()
             return None
-            
+
+    def mark_notifications_as_read_in_db(self):
+        """Mark all notifications for current user as read in database"""
+        try:
+            db = SessionLocal()
+            try:
+                # Begin transaction
+                db.begin()
+                
+                # Update all unread notifications for this user
+                update_query = text("""
+                    UPDATE notifications 
+                    SET read = TRUE
+                    WHERE user_id = :user_id AND read = FALSE
+                """)
+                
+                result = db.execute(update_query, {"user_id": str(self.parent().current_user.id)})
+                print(f"DEBUG: Marked {result.rowcount if hasattr(result, 'rowcount') else '?'} notifications as read in database")
+                
+                # Reset notification count
+                self.notification_count = 0
+                self.update_notification_badge()
+                
+                # Commit changes
+                db.commit()
+                return True
+            except Exception as e:
+                print(f"Error marking notifications as read: {str(e)}")
+                db.rollback()
+                return False
+            finally:
+                db.close()
+        except Exception as outer_e:
+            print(f"Critical error marking notifications as read: {str(outer_e)}")
+            return False
+
     def notification_clicked(self):
         """Handle notification click - open dashboard"""
         try:
@@ -1195,14 +1308,15 @@ class FloatingToolbar(QWidget):
             
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and not self.is_pinned:
-            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            self.dragging = True
+            self.offset = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
         else:
             super().mousePressEvent(event)
             
     def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.LeftButton and self.drag_position is not None and not self.is_pinned:
-            new_pos = event.globalPos() - self.drag_position
+        if event.buttons() & Qt.LeftButton and self.dragging:
+            new_pos = event.globalPos() - self.offset
             self.move(new_pos)
             event.accept()
         else:
@@ -1210,7 +1324,7 @@ class FloatingToolbar(QWidget):
             
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.drag_position = None
+            self.dragging = False
             event.accept()
         else:
             super().mouseReleaseEvent(event)
@@ -1462,6 +1576,9 @@ class FloatingToolbar(QWidget):
                     self.viewed_opportunities.add(opp.id)
                     print(f"DEBUG: Added opportunity to viewed list: {opp.id}")
                 
+                # Mark all notifications for this user as read in the database
+                self.mark_notifications_as_read_in_db()
+                
                 print(f"DEBUG: Cleared notifications - Marked {len(new_opps)} opportunities as viewed")
                 print(f"DEBUG: Current viewed_opportunities size: {len(self.viewed_opportunities)}")
                 
@@ -1555,6 +1672,37 @@ class FloatingToolbar(QWidget):
         # Position menu relative to the dashboard button
         button_pos = self.buttons["dashboard"].mapToGlobal(position)
         selected_action = menu.exec_(button_pos)
+
+    def show_startup_notification(self, stats_summary):
+        """Show startup notification with reliable display"""
+        try:
+            print("DEBUG: Showing startup notification")
+            
+            # Get absolute path to app icon for notification
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                    'resources', 'SI Opportunity Manager LOGO.png.png')
+            if not os.path.exists(icon_path):
+                icon_path = None
+                
+            # Set startup notification shown flag
+            if hasattr(self, 'toolbar'):
+                self.toolbar.startup_notification_shown = True
+                
+            # Show custom notification with longer duration for startup
+            notification_manager.show_notification(
+                "SI Opportunity Manager",  # Clean title without dash
+                stats_summary,
+                icon_path=icon_path,
+                duration=8,
+                callback=self.toolbar.notification_clicked if hasattr(self, 'toolbar') else None
+            )
+            
+            # Also print to console as backup
+            print(f"STARTUP NOTIFICATION:\nSI Opportunity Manager\n{stats_summary}")
+            
+        except Exception as e:
+            print(f"Error showing startup notification: {str(e)}")
+            traceback.print_exc()
 
 class LoadingOverlay(QWidget):
     def __init__(self, parent=None):
@@ -1793,17 +1941,21 @@ class MainWindow(QMainWindow):
             if not os.path.exists(icon_path):
                 icon_path = None
                 
+            # Set startup notification shown flag
+            if hasattr(self, 'toolbar'):
+                self.toolbar.startup_notification_shown = True
+                
             # Show custom notification with longer duration for startup
             notification_manager.show_notification(
-                "SI Opportunity Manager - Dashboard Overview",
+                "SI Opportunity Manager",  # Clean title without dash
                 stats_summary,
                 icon_path=icon_path,
                 duration=8,
-                callback=self.toolbar.notification_clicked
+                callback=self.toolbar.notification_clicked if hasattr(self, 'toolbar') else None
             )
             
             # Also print to console as backup
-            print(f"STARTUP NOTIFICATION:\nSI Opportunity Manager - Dashboard Overview\n{stats_summary}")
+            print(f"STARTUP NOTIFICATION:\nSI Opportunity Manager\n{stats_summary}")
             
         except Exception as e:
             print(f"Error showing startup notification: {str(e)}")
