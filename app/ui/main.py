@@ -785,7 +785,7 @@ class FloatingToolbar(QWidget):
                 try:
                     # SQL version - use case-insensitive matching
                     new_opportunities_query = text("""
-                        SELECT id, title, display_title, description, status, created_at, creator_id
+                        SELECT id, title, description, status, created_at, creator_id
                         FROM opportunities 
                         WHERE LOWER(status) = 'new' 
                         AND creator_id != :user_id
@@ -796,7 +796,7 @@ class FloatingToolbar(QWidget):
                     # Process the raw SQL results into Opportunity objects safely
                     new_opportunities = []
 
-                    valid_fields = ['id', 'title', 'display_title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
+                    valid_fields = ['id', 'title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
                     
                     for row in result:
                         try:
@@ -1519,7 +1519,7 @@ Or click 'Mark as Read' to clear without viewing."""
                 # Use case-insensitive SQL query for new opportunities
                 try:
                     new_opps_query = text("""
-                        SELECT id, title, display_title, description, status, created_at, creator_id
+                        SELECT id, title, description, status, created_at, creator_id
                         FROM opportunities
                         WHERE LOWER(status) = 'new'
                         AND creator_id != :user_id
@@ -1530,7 +1530,7 @@ Or click 'Mark as Read' to clear without viewing."""
                     # Process the raw SQL results into Opportunity objects safely
                     new_opps = []
 
-                    valid_fields = ['id', 'title', 'display_title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
+                    valid_fields = ['id', 'title', 'description', 'status', 'created_at', 'creator_id', 'acceptor_id', 'completed_at', 'started_at', 'response_time', 'work_time', 'updated_at', 'systems', 'comments', 'files']
                     
                     for row in result:
                         try:

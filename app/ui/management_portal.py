@@ -588,6 +588,44 @@ class ManagementPortal(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout()
         
+        # Add filter controls
+        filter_layout = QHBoxLayout()
+        
+        # Add filter label
+        filter_label = QLabel("Filters:")
+        filter_label.setStyleSheet("color: white; font-weight: bold;")
+        filter_layout.addWidget(filter_label)
+        
+        # Create filters for each column
+        self.filters = {}
+        filter_columns = ["Title", "Status", "Created By", "Assigned To"]
+        
+        for column in filter_columns:
+            filter_box = QComboBox()
+            filter_box.setStyleSheet("""
+                QComboBox {
+                    background-color: #3d3d3d;
+                    color: white;
+                    border: 1px solid #555;
+                    border-radius: 4px;
+                    padding: 2px 8px;
+                    min-width: 120px;
+                }
+            """)
+            filter_box.addItem(f"All {column}s")
+            filter_box.currentTextChanged.connect(self.apply_filters)
+            
+            # Create label for each filter
+            column_label = QLabel(f"{column}:")
+            column_label.setStyleSheet("color: white;")
+            
+            filter_layout.addWidget(column_label)
+            filter_layout.addWidget(filter_box)
+            self.filters[column.lower().replace(" ", "_")] = filter_box
+        
+        filter_layout.addStretch()
+        layout.addLayout(filter_layout)
+        
         # Create table
         self.opportunities_table = QTableWidget()
         self.opportunities_table.setColumnCount(9)  # Increased column count
@@ -611,27 +649,103 @@ class ManagementPortal(QMainWindow):
         self.opportunities_table.setColumnWidth(5, 150)  # Assigned To
         self.opportunities_table.setColumnWidth(6, 150)  # Completion Time
         self.opportunities_table.setColumnWidth(7, 100)  # Response Time
-        self.opportunities_table.setColumnWidth(8, 150)  # Actions
+        self.opportunities_table.setColumnWidth(8, 200)  # Actions - Increased width
 
+        # Enable sorting
+        self.opportunities_table.setSortingEnabled(True)
+        
+        # Make header section clickable for sorting
+        self.opportunities_table.horizontalHeader().setSectionsClickable(True)
+        
         layout.addWidget(self.opportunities_table)
         tab.setLayout(layout)
         return tab
-
-    def handle_opportunity_double_click(self, item):
-        """Handle double-click on opportunity table row"""
-        row = item.row()
-        opportunity_id = self.opportunities_table.item(row, 0).text()
-        self.view_opportunity(opportunity_id)
-
+        
+    def apply_filters(self):
+        """Apply all filters to the opportunities table"""
+        self.load_opportunities()
+        
     def load_opportunities(self):
         """Load opportunities into the table"""
         try:
             db = SessionLocal()
             opportunities = db.query(Opportunity).all()
             
-            self.opportunities_table.setRowCount(len(opportunities))
+            # Apply filters if they exist and are set
+            filtered_opportunities = []
+            for opp in opportunities:
+                # Check if opportunity passes all filters
+                passes_filters = True
+                
+                # Get creator and acceptor info for filtering
+                creator = db.query(User).filter(User.id == opp.creator_id).first()
+                creator_name = creator.username if creator else "Unknown"
+                
+                assigned_to = "Unassigned"
+                if opp.acceptor_id:
+                    acceptor = db.query(User).filter(User.id == opp.acceptor_id).first()
+                    if acceptor:
+                        assigned_to = f"{acceptor.first_name} {acceptor.last_name}"
+                
+                # Apply title filter
+                if hasattr(self, 'filters') and 'title' in self.filters and self.filters['title'].currentText() != "All Titles":
+                    if self.filters['title'].currentText() not in opp.title:
+                        passes_filters = False
+                
+                # Apply status filter
+                if hasattr(self, 'filters') and 'status' in self.filters and self.filters['status'].currentText() != "All Statuses":
+                    if self.filters['status'].currentText() != opp.status:
+                        passes_filters = False
+                
+                # Apply created by filter
+                if hasattr(self, 'filters') and 'created_by' in self.filters and self.filters['created_by'].currentText() != "All Created Bys":
+                    if self.filters['created_by'].currentText() != creator_name:
+                        passes_filters = False
+                
+                # Apply assigned to filter
+                if hasattr(self, 'filters') and 'assigned_to' in self.filters and self.filters['assigned_to'].currentText() != "All Assigned Tos":
+                    if self.filters['assigned_to'].currentText() != assigned_to:
+                        passes_filters = False
+                
+                if passes_filters:
+                    filtered_opportunities.append(opp)
             
-            for i, opp in enumerate(opportunities):
+            # Sort by newest created date first (default sort)
+            filtered_opportunities.sort(key=lambda x: x.created_at if x.created_at else datetime.min, reverse=True)
+            
+            # Update filter dropdowns with available values
+            if hasattr(self, 'filters'):
+                # Collect unique values for each filter
+                titles = set()
+                statuses = set()
+                creators = set()
+                assignees = set()
+                
+                for opp in opportunities:
+                    titles.add(opp.title)
+                    statuses.add(opp.status)
+                    
+                    creator = db.query(User).filter(User.id == opp.creator_id).first()
+                    creators.add(creator.username if creator else "Unknown")
+                    
+                    assigned_to = "Unassigned"
+                    if opp.acceptor_id:
+                        acceptor = db.query(User).filter(User.id == opp.acceptor_id).first()
+                        if acceptor:
+                            assigned_to = f"{acceptor.first_name} {acceptor.last_name}"
+                    assignees.add(assigned_to)
+                
+                # Update comboboxes while preserving selection
+                self._update_combobox(self.filters['title'], titles, "All Titles")
+                self._update_combobox(self.filters['status'], statuses, "All Statuses")
+                self._update_combobox(self.filters['created_by'], creators, "All Created Bys")
+                self._update_combobox(self.filters['assigned_to'], assignees, "All Assigned Tos")
+            
+            # Update table with filtered opportunities
+            self.opportunities_table.setSortingEnabled(False)  # Disable sorting while updating
+            self.opportunities_table.setRowCount(len(filtered_opportunities))
+            
+            for i, opp in enumerate(filtered_opportunities):
                 # ID
                 id_item = QTableWidgetItem(str(opp.id))
                 id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)  # Make read-only
@@ -656,6 +770,8 @@ class ManagementPortal(QMainWindow):
                 # Created Date
                 created_date = opp.created_at.strftime("%Y-%m-%d %H:%M") if opp.created_at else "N/A"
                 created_date_item = QTableWidgetItem(created_date)
+                # Store the actual datetime for sorting
+                created_date_item.setData(Qt.UserRole, opp.created_at.timestamp() if opp.created_at else 0)
                 created_date_item.setFlags(created_date_item.flags() & ~Qt.ItemIsEditable)
                 self.opportunities_table.setItem(i, 4, created_date_item)
                 
@@ -695,7 +811,7 @@ class ManagementPortal(QMainWindow):
                 actions_widget = QWidget()
                 actions_layout = QHBoxLayout(actions_widget)
                 actions_layout.setContentsMargins(4, 0, 4, 0)
-                actions_layout.setSpacing(4)
+                actions_layout.setSpacing(8)  # Increased spacing between buttons
                 
                 # View button
                 view_btn = QPushButton("View")
@@ -706,6 +822,7 @@ class ManagementPortal(QMainWindow):
                         border: none;
                         padding: 4px 8px;
                         border-radius: 4px;
+                        min-width: 60px;
                     }
                     QPushButton:hover {
                         background-color: #106ebe;
@@ -723,6 +840,7 @@ class ManagementPortal(QMainWindow):
                         border: none;
                         padding: 4px 8px;
                         border-radius: 4px;
+                        min-width: 60px;
                     }
                     QPushButton:hover {
                         background-color: #ea4a1f;
@@ -731,10 +849,103 @@ class ManagementPortal(QMainWindow):
                 delete_btn.clicked.connect(lambda checked, oid=opp.id: self.delete_opportunity(oid))
                 actions_layout.addWidget(delete_btn)
                 
-                self.opportunities_table.setCellWidget(i, 8, actions_widget)
+                # Unassign button (if assigned)
+                if opp.acceptor_id:
+                    unassign_btn = QPushButton("Unassign")
+                    unassign_btn.setStyleSheet("""
+                        QPushButton {
+                            background-color: #605e5c;
+                            color: white;
+                            border: none;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            min-width: 65px;
+                        }
+                        QPushButton:hover {
+                            background-color: #7a7877;
+                        }
+                    """)
+                    unassign_btn.clicked.connect(lambda checked, oid=opp.id: self.unassign_opportunity(oid))
+                    actions_layout.addWidget(unassign_btn)
                 
+                self.opportunities_table.setCellWidget(i, 8, actions_widget)
+            
+            # Re-enable sorting and sort by created date (newest first)
+            self.opportunities_table.setSortingEnabled(True)
+            self.opportunities_table.sortByColumn(4, Qt.DescendingOrder)
+            
         finally:
             db.close()
+            
+    def _update_combobox(self, combobox, values, default_text):
+        """Update a combobox with new values while preserving selection"""
+        current_text = combobox.currentText()
+        combobox.blockSignals(True)
+        combobox.clear()
+        combobox.addItem(default_text)
+        for value in sorted(values):
+            combobox.addItem(str(value))
+        
+        # Restore previous selection if it exists in the new items
+        index = combobox.findText(current_text)
+        if index >= 0:
+            combobox.setCurrentIndex(index)
+        else:
+            combobox.setCurrentIndex(0)
+        combobox.blockSignals(False)
+        
+    def unassign_opportunity(self, opportunity_id):
+        """Unassign a user from an opportunity"""
+        reply = QMessageBox.question(
+            self,
+            'Confirm Unassignment',
+            'Are you sure you want to unassign the user from this opportunity?',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            db = SessionLocal()
+            try:
+                # Get the opportunity
+                opportunity = db.query(Opportunity).filter(Opportunity.id == opportunity_id).first()
+                
+                if not opportunity:
+                    QMessageBox.warning(self, "Error", "Opportunity not found.")
+                    return
+                
+                # Log this change
+                activity = ActivityLog(
+                    user_id=self.current_user.id,
+                    action="unassigned",
+                    opportunity_id=opportunity.id,
+                    details={
+                        "previous_assignee": str(opportunity.acceptor_id)
+                    }
+                )
+                db.add(activity)
+                
+                # Update opportunity
+                opportunity.acceptor_id = None
+                opportunity.status = "New"  # Reset status to New
+                
+                db.commit()
+                QMessageBox.information(self, "Success", "User unassigned successfully.")
+                
+                # Refresh the table
+                self.load_opportunities()
+                
+            except Exception as e:
+                db.rollback()
+                QMessageBox.critical(self, "Error", f"Failed to unassign user: {str(e)}")
+                traceback.print_exc()
+            finally:
+                db.close()
+
+    def view_opportunity(self, opportunity_id):
+        """View a specific opportunity in a dialog"""
+        dialog = TicketViewDialog(opportunity_id, self.current_user, self)
+        dialog.exec_()
 
     def delete_opportunity(self, opportunity_id):
         """Delete an opportunity after confirmation"""
@@ -932,6 +1143,21 @@ class ManagementPortal(QMainWindow):
         finally:
             db.close()
             
+    def handle_opportunity_double_click(self, item):
+        """Handle double click on an opportunity in the table"""
+        try:
+            # Get the opportunity ID from the first column in the same row
+            row = item.row()
+            id_item = self.opportunities_table.item(row, 0)
+            if id_item:
+                opportunity_id = id_item.text()
+                # Open the ticket view dialog
+                self.view_opportunity(opportunity_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error opening opportunity: {str(e)}")
+            print(f"Error in handle_opportunity_double_click: {str(e)}")
+            print(traceback.format_exc())
+            
     def update_statistics(self, db):
         """Update the statistics cards with current data"""
         try:
@@ -1085,11 +1311,6 @@ class ManagementPortal(QMainWindow):
             finally:
                 db.close()
                 
-    def view_opportunity(self, opportunity_id):
-        """View a specific opportunity in a dialog"""
-        dialog = TicketViewDialog(opportunity_id, self.current_user, self)
-        dialog.exec_()
-
     def delete_user(self, user):
         """Delete a user after confirmation"""
         # Don't allow deleting self or other admins

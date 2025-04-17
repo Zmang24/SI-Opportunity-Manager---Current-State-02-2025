@@ -72,7 +72,7 @@ class Opportunity(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
     description = Column(String)
-    status = Column(String, default="new")
+    status = Column(String, default="new")  # Always lowercase for consistency
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime(timezone=True))
@@ -97,6 +97,22 @@ class Opportunity(Base):
     def display_title(self):
         """Get a display-friendly title"""
         return self.title if len(self.title) <= 50 else self.title[:47] + "..."
+        
+    @property
+    def normalized_status(self):
+        """Get normalized status in lowercase"""
+        return self.status.lower() if self.status else "new"
+        
+    @property
+    def display_status(self):
+        """Get a properly formatted status for display"""
+        status_map = {
+            "new": "New",
+            "in progress": "In Progress",
+            "completed": "Completed",
+            "needs info": "Needs Info"
+        }
+        return status_map.get(self.normalized_status, self.status)
 
 class AdasSystem(Base):
     __tablename__ = "adas_systems"
