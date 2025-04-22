@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QScrollArea, QFrame, QMessageBox, QComboBox, QDateEdit,
                            QDialog, QTextEdit)
-from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect
+from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect, QObject, QEvent
 from PyQt5.QtGui import QCloseEvent, QKeySequence, QPainter, QPixmap, QColor
 from app.database.connection import SessionLocal
 from app.models.models import Opportunity, Notification, ActivityLog, User
@@ -333,6 +333,21 @@ class DashboardWidget(QWidget):
         except Exception as e:
             print(f"Error during cleanup: {str(e)}")
         
+    def protect_combobox_from_wheel(self, combobox: QComboBox) -> None:
+        """Install event filter to protect combobox from accidental wheel scrolling"""
+        class ComboBoxEventFilter(QObject):
+            def eventFilter(self, obj, event):
+                if event.type() == QEvent.Wheel and not obj.hasFocus():
+                    # Block wheel events when combo box doesn't have focus
+                    return True
+                return False
+        
+        # Create and install the event filter
+        event_filter = ComboBoxEventFilter()
+        combobox.installEventFilter(event_filter)
+        # Store reference to prevent garbage collection
+        combobox.event_filter = event_filter
+    
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(24, 24, 24, 24)
@@ -529,6 +544,8 @@ class DashboardWidget(QWidget):
         self.status_filter.addItem("Completed")
         self.status_filter.addItem("Needs Info")
         self.status_filter.currentTextChanged.connect(self.filter_opportunities)
+        # Protect from accidental wheel scrolling
+        self.protect_combobox_from_wheel(self.status_filter)
         my_tickets_layout.addWidget(self.status_filter)
         
         # Assignment filter
@@ -559,6 +576,8 @@ class DashboardWidget(QWidget):
         self.assignment_filter.addItem("Assigned to me")
         self.assignment_filter.addItem("Unassigned")
         self.assignment_filter.currentTextChanged.connect(self.filter_opportunities)
+        # Protect from accidental wheel scrolling
+        self.protect_combobox_from_wheel(self.assignment_filter)
         my_tickets_layout.addWidget(self.assignment_filter)
         
         advanced_filter_layout.addWidget(self.my_tickets_filters)
@@ -1632,6 +1651,10 @@ class DashboardWidget(QWidget):
                     border-top: 4px solid white;
                 }}
             """)
+            
+            # Protect from accidental wheel scrolling
+            self.protect_combobox_from_wheel(status_combo)
+            
             status_combo.setProperty("opportunity", opportunity)
             status_combo.currentTextChanged.connect(self.handle_status_change)
             status_section.addWidget(status_combo)
