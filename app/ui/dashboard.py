@@ -1553,6 +1553,14 @@ class DashboardWidget(QWidget):
             print(f"ERROR in update_status: {str(e)}")
             print("Traceback:", traceback.format_exc())
 
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Override close event to hide the dashboard instead of closing the application"""
+        print("DEBUG: Dashboard close event triggered")
+        # Instead of accepting the close event (which would close the widget),
+        # we hide it and ignore the event
+        self.hide()
+        event.ignore()
+
 class StatusChangeDialog(QDialog):
     def __init__(self, opportunity, new_status, parent=None):
         super().__init__(parent)
