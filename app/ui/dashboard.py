@@ -412,15 +412,48 @@ class DashboardWidget(QWidget):
                         description = re.sub(r'Vehicle:\s+[^\n]+(\n|$)', '', description).strip()
                 
                 if description:
-                    # Truncate long descriptions
-                    max_length = 150
-                    if len(description) > max_length:
-                        description = description[:max_length] + "..."
+                    # Create a container for the description with a frame
+                    desc_container = QFrame()
+                    desc_container.setStyleSheet("""
+                        QFrame {
+                            background-color: transparent;
+                            border-radius: 0px;
+                            padding: 0px;
+                        }
+                        QFrame:hover {
+                            background-color: #303030;
+                        }
+                    """)
+                    desc_container_layout = QVBoxLayout(desc_container)
+                    desc_container_layout.setContentsMargins(0, 0, 0, 0)
+                    desc_container_layout.setSpacing(4)
                     
-                    desc_label = QLabel(description)
+                    # Full description for storage
+                    desc_container.full_description = description
+                    
+                    # Truncated description for initial display
+                    max_length = 150
+                    truncated = len(description) > max_length
+                    display_text = description if not truncated else description[:max_length] + "..."
+                    
+                    desc_label = QLabel(display_text)
                     desc_label.setStyleSheet("color: #cccccc; font-size: 12px;")
                     desc_label.setWordWrap(True)
-                    details_layout.addWidget(desc_label)
+                    desc_container_layout.addWidget(desc_label)
+                    
+                    # Add "Show more" indicator if truncated
+                    if truncated:
+                        show_more = QLabel("Click to expand...")
+                        show_more.setStyleSheet("color: #0078d4; font-size: 11px; font-style: italic;")
+                        desc_container_layout.addWidget(show_more)
+                    
+                    # Make the container clickable
+                    desc_container.mousePressEvent = lambda event, container=desc_container, label=desc_label, full_text=description: self.toggle_description(container, label, full_text)
+                    
+                    # Store if currently expanded
+                    desc_container.is_expanded = False
+                    
+                    details_layout.addWidget(desc_container)
                 
                 title_section.addWidget(details_frame)
             
@@ -1560,6 +1593,101 @@ class DashboardWidget(QWidget):
         # we hide it and ignore the event
         self.hide()
         event.ignore()
+
+    def toggle_description(self, container, label, full_text):
+        """Toggle between truncated and full text in description"""
+        if not hasattr(container, 'is_expanded'):
+            container.is_expanded = False
+            
+        if container.is_expanded:
+            # Contract: Show truncated text
+            max_length = 150
+            truncated = len(full_text) > max_length
+            display_text = full_text if not truncated else full_text[:max_length] + "..."
+            label.setText(display_text)
+            
+            # Update show more indicator if needed
+            if truncated:
+                # Find and update the show more indicator
+                for i in range(container.layout().count()):
+                    widget = container.layout().itemAt(i).widget()
+                    if isinstance(widget, QLabel) and widget != label:
+                        widget.setText("Click to expand...")
+                        widget.show()
+            
+            container.is_expanded = False
+        else:
+            # Expand: Show full text
+            label.setText(full_text)
+            
+            # Hide the show more indicator
+            for i in range(container.layout().count()):
+                widget = container.layout().itemAt(i).widget()
+                if isinstance(widget, QLabel) and widget != label:
+                    widget.setText("Click to collapse...")
+            
+            container.is_expanded = True
+            
+        # Adjust layout as needed
+        container.adjustSize()
+        self.opportunities_container.adjustSize()
+        
+    def show_details_dialog(self, title, description):
+        """Show a dialog with the full text of a description"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Full Details")
+        dialog.setMinimumSize(600, 400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #1e1e1e;
+            }
+            QLabel {
+                color: white;
+            }
+            QTextEdit {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        """)
+        
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+        
+        # Title
+        title_label = QLabel(title)
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(title_label)
+        
+        # Description in a text edit (readonly)
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setText(description)
+        text_edit.setStyleSheet("font-size: 13px;")
+        layout.addWidget(text_edit)
+        
+        # Close button
+        button_layout = QHBoxLayout()
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        button_layout.addStretch()
+        button_layout.addWidget(close_btn)
+        layout.addLayout(button_layout)
+        
+        dialog.exec_()
 
 class StatusChangeDialog(QDialog):
     def __init__(self, opportunity, new_status, parent=None):
