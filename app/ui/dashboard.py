@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect, QObject, QEvent
 from PyQt5.QtGui import QCloseEvent, QKeySequence, QPainter, QPixmap, QColor
 from app.database.connection import SessionLocal
-from app.models.models import Opportunity, Notification, ActivityLog, User
+from app.models.models import Opportunity, Notification, ActivityLog, User, Vehicle
 from app.config import STORAGE_DIR
 import os
 import traceback
@@ -19,6 +19,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import cast as sql_cast
 from sqlalchemy import text
 import math  # Add this import at the top
+import re
 
 T = TypeVar('T')
 
@@ -108,33 +109,422 @@ class DashboardWidget(QWidget):
             if local_tz_name:
                 try:
                     return ZoneInfo(local_tz_name)
-                except Exception:
-                    # If the name is not in the ZoneInfo database, try to map common names
-                    tz_mapping = {
-                        "Eastern Standard Time": "America/New_York",
-                        "Central Standard Time": "America/Chicago", 
-                        "Mountain Standard Time": "America/Denver",
-                        "Pacific Standard Time": "America/Los_Angeles",
-                        "GMT Standard Time": "Europe/London"
-                    }
-                    if local_tz_name in tz_mapping:
-                        return ZoneInfo(tz_mapping[local_tz_name])
-            
-            # Fallbacks
-            # Try getting TZ environment variable
-            if 'TZ' in os.environ:
-                try:
-                    return ZoneInfo(os.environ['TZ'])
-                except Exception:
-                    pass
-                    
-            print(f"Using system timezone detection: {local_tz_name}")
-            # Fallback to UTC if all else fails
-            return ZoneInfo('UTC')
+                except Exception as e:
+                    print(f"DEBUG: Error creating ZoneInfo: {str(e)}")
+                    return ZoneInfo('UTC')
+            else:
+                print("DEBUG: No valid timezone found")
+                return ZoneInfo('UTC')
         except Exception as e:
-            print(f"Error detecting timezone: {e}")
+            print(f"DEBUG: Error getting local timezone: {str(e)}")
             return ZoneInfo('UTC')
-    
+
+    def get_filtered_opportunities(self, db: Session) -> List[Opportunity]:
+        """Get opportunities based on current filter"""
+        print(f"DEBUG: Applying filter: {self.current_filter}")
+        print(f"DEBUG: Advanced filter applied: {self.advanced_filter_applied}")
+        
+        # Base query
+        query = db.query(Opportunity)
+        
+        # Apply filter based on filter button
+        if self.current_filter == "active_tickets":
+            # Show all tickets except completed ones
+            query = query.filter(~Opportunity.status.ilike("completed"))
+            print(f"DEBUG: Applied 'Active Tickets' filter (excluding completed)")
+        elif self.current_filter == "my_tickets":
+            # My tickets filter (created by me)
+            query = query.filter(Opportunity.creator_id == str(self.current_user.id))
+            print(f"DEBUG: Applied 'My Tickets' filter")
+            
+            # Sub-filter for my tickets
+            if self.my_tickets_filter_type.currentText() == "Created":
+                # Already filtered to my created tickets
+                pass
+            elif self.my_tickets_filter_type.currentText() == "Assigned":
+                # Switch to assigned tickets
+                query = db.query(Opportunity).filter(Opportunity.acceptor_id == str(self.current_user.id))
+                print(f"DEBUG: Applied 'Assigned to Me' sub-filter")
+            elif self.my_tickets_filter_type.currentText() == "Both":
+                # Both created by me and assigned to me
+                query = db.query(Opportunity).filter(
+                    (Opportunity.creator_id == str(self.current_user.id)) | 
+                    (Opportunity.acceptor_id == str(self.current_user.id))
+                )
+                print(f"DEBUG: Applied 'Both' sub-filter")
+        elif self.current_filter == "new":
+            query = query.filter(Opportunity.status.ilike("new"))
+            # Only show tickets that aren't created by current user
+            if self.current_user:
+                query = query.filter(Opportunity.creator_id != str(self.current_user.id))
+            print(f"DEBUG: Applied 'New' filter")
+        elif self.current_filter == "in_progress":
+            query = query.filter(Opportunity.status.ilike("in progress"))
+            print(f"DEBUG: Applied 'In Progress' filter")
+        elif self.current_filter == "completed":
+            query = query.filter(Opportunity.status.ilike("completed"))
+            print(f"DEBUG: Applied 'Completed' filter")
+        elif self.current_filter == "needs_info":
+            query = query.filter(Opportunity.status.ilike("needs info"))
+            print(f"DEBUG: Applied 'Needs Info' filter")
+        
+        # Apply advanced filters if set
+        if self.advanced_filter_applied:
+            # Status filter
+            if self.status_filter.currentText() != "All":
+                query = query.filter(Opportunity.status.ilike(self.status_filter.currentText().lower()))
+                print(f"DEBUG: Applied advanced status filter: {self.status_filter.currentText()}")
+            
+            # Assignment filter
+            if self.assignment_filter.currentText() == "Assigned To Me":
+                query = query.filter(Opportunity.acceptor_id == str(self.current_user.id))
+                print(f"DEBUG: Applied 'Assigned To Me' filter")
+            elif self.assignment_filter.currentText() == "Created By Me":
+                query = query.filter(Opportunity.creator_id == str(self.current_user.id))
+                print(f"DEBUG: Applied 'Created By Me' filter")
+            elif self.assignment_filter.currentText() == "Unassigned":
+                query = query.filter(Opportunity.acceptor_id == None)
+                print(f"DEBUG: Applied 'Unassigned' filter")
+            
+            # Date range
+            start_date = self.from_date.date().toPyDate()
+            end_date = self.to_date.date().toPyDate()
+            
+            # Add a day to the end date to make it inclusive
+            end_date = end_date + timedelta(days=1)
+            
+            # Get timezone info
+            utc = ZoneInfo('UTC')
+            
+            if start_date and end_date:
+                query = query.filter(
+                    Opportunity.created_at.between(
+                        datetime.combine(start_date, datetime.min.time(), tzinfo=utc),
+                        datetime.combine(end_date, datetime.max.time(), tzinfo=utc)
+                    ))
+                print(f"DEBUG: Applied date filter: {start_date} to {end_date}")
+            else:
+                print(f"DEBUG: No date range filter applied")
+        
+        # Get vehicle information if available by joining with Vehicle table
+        try:
+            # Check if the vehicles table exists and has matching records
+            vehicles_exists = db.query(Vehicle).limit(1).count() > 0
+            if vehicles_exists:
+                # Look for vehicle_id if it exists as a direct column
+                if hasattr(Opportunity, 'vehicle_id'):
+                    query = query.outerjoin(Vehicle, Vehicle.id == Opportunity.vehicle_id)
+                    print(f"DEBUG: Joined with vehicles table using vehicle_id")
+                # Otherwise try to join using VIN if both tables have it
+                elif hasattr(Opportunity, 'vin') and hasattr(Vehicle, 'vin'):
+                    query = query.outerjoin(Vehicle, Vehicle.vin == Opportunity.vin)
+                    print(f"DEBUG: Joined with vehicles table using VIN")
+        except Exception as e:
+            print(f"DEBUG: Error trying to join with vehicles: {str(e)}")
+            # Continue without the join if there's an error
+        
+        # Return results ordered by creation date
+        return query.order_by(Opportunity.created_at.desc()).all()
+
+    def add_opportunity_widget(self, opportunity: Opportunity) -> Optional[QFrame]:
+        """Add a widget for displaying an opportunity"""
+        try:
+            card = QFrame()
+            card.setObjectName(f"card_{opportunity.id}")
+            
+            # Store the widget in our dictionary
+            self.opportunity_widgets[str(opportunity.id)] = card
+            
+            # Adjust card style based on view mode
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background-color: #2d2d2d;
+                    border-radius: {6 if self.is_compact else 8}px;
+                    padding: {12 if self.is_compact else 20}px;
+                }}
+                QFrame:hover {{
+                    background-color: #333333;
+                }}
+            """)
+            
+            card_layout = QVBoxLayout()
+            card_layout.setSpacing(self.is_compact and 8 or 16)
+            card_layout.setContentsMargins(0, 0, 0, 0)
+            
+            # Header section with title and status
+            header = QHBoxLayout()
+            header.setSpacing(self.is_compact and 8 or 16)
+            
+            # Title and submitter info
+            title_section = QVBoxLayout()
+            title_section.setSpacing(self.is_compact and 2 or 4)
+            
+            # Adjust title style based on view mode
+            title = QLabel(f"{opportunity.display_title if hasattr(opportunity, 'display_title') else opportunity.title}")
+            title.setStyleSheet(f"""
+                color: #ffffff;
+                font-size: {14 if self.is_compact else 18}px;
+                font-weight: bold;
+            """)
+            title_section.addWidget(title)
+            
+            # Add submitter info
+            if opportunity.creator:
+                creator = opportunity.creator
+                submitter_text = QLabel(f"Submitted by {creator.first_name} {creator.last_name} ({creator.team})")
+                submitter_text.setStyleSheet("color: #bbbbbb; font-size: 12px;")
+                title_section.addWidget(submitter_text)
+            
+            # Add time info
+            time_info = QLabel()
+            time_text = []
+            
+            if opportunity.created_at:
+                # Convert to local time for display
+                local_created_time = self.convert_to_local_time(opportunity.created_at)
+                created_time = local_created_time.strftime("%Y-%m-%d %H:%M")
+                time_text.append(f"Created: {created_time}")
+            
+            # Add acceptor info if assigned
+            if opportunity.acceptor_id:
+                acceptor = opportunity.acceptor
+                if acceptor:
+                    # If completed, show completion info
+                    if opportunity.status.lower() == "completed":
+                        # Include response and work time if available
+                        total_time = opportunity.response_time
+                        work_time = opportunity.work_time
+                        
+                        # Convert completed time to local time
+                        if opportunity.completed_at:
+                            local_completed_time = self.convert_to_local_time(opportunity.completed_at)
+                            completed_time = local_completed_time.strftime("%Y-%m-%d %H:%M")
+                            time_text.append(f"Completed: {completed_time}")
+                        time_info_parts = []
+                        if total_time:
+                            time_info_parts.append(f"Total Time: {self.format_duration(total_time)}")
+                        if work_time:
+                            time_info_parts.append(f"Work Time: {self.format_duration(work_time)}")
+                            
+                        time_text.append(f"✓ Completed by {acceptor.first_name} {acceptor.last_name}")
+                        if time_info_parts:
+                            time_text.append(" • ".join(time_info_parts))
+                    elif opportunity.status.lower() == "in progress":
+                        time_text.append(f"Assigned to: {acceptor.first_name} {acceptor.last_name}")
+                        # Show both current total time and work time for in-progress tickets
+                        current_time = datetime.now(timezone.utc)
+                        total_duration = current_time - opportunity.created_at
+                        time_text.append(f"Total Time: {self.format_duration(total_duration)}")
+                        
+                        if opportunity.started_at:
+                            work_duration = current_time - opportunity.started_at
+                            time_text.append(f"Work Time: {self.format_duration(work_duration)}")
+                    else:
+                        time_text.append(f"Assigned to: {acceptor.first_name} {acceptor.last_name}")
+            
+            time_info.setText(" • ".join(time_text))
+            time_info.setStyleSheet("color: #888888; font-size: 11px;")
+            title_section.addWidget(time_info)
+            
+            # Add vehicle, systems, and description information
+            if opportunity.vin or hasattr(opportunity, 'systems') or opportunity.description:
+                details_frame = QFrame()
+                details_frame.setStyleSheet("""
+                    QFrame {
+                        background-color: #252525;
+                        border-radius: 4px;
+                        padding: 8px;
+                        margin-top: 4px;
+                    }
+                """)
+                details_layout = QVBoxLayout(details_frame)
+                details_layout.setContentsMargins(8, 8, 8, 8)
+                details_layout.setSpacing(6)
+                
+                # Vehicle info (if available)
+                vehicle_info = []
+                has_vehicle = False
+                vehicle_in_description = False
+                
+                # Check if this is a referenced vehicle through a join
+                if hasattr(opportunity, 'vehicle') and opportunity.vehicle:
+                    vehicle = opportunity.vehicle
+                    if vehicle and hasattr(vehicle, 'year') and hasattr(vehicle, 'make') and hasattr(vehicle, 'model'):
+                        vehicle_info = [vehicle.year, vehicle.make, vehicle.model]
+                        has_vehicle = True
+                # Otherwise check for year/make/model attributes directly on opportunity
+                elif hasattr(opportunity, 'year') and opportunity.year and hasattr(opportunity, 'make') and opportunity.make and hasattr(opportunity, 'model') and opportunity.model:
+                    vehicle_info = [opportunity.year, opportunity.make, opportunity.model]
+                    has_vehicle = True
+                # Otherwise try to extract from description
+                elif opportunity.description:
+                    # Look for "Vehicle: YEAR MAKE MODEL" pattern in the description
+                    vehicle_match = re.search(r'Vehicle:\s+([^\n]+)', opportunity.description)
+                    if vehicle_match:
+                        vehicle_str = vehicle_match.group(1).strip()
+                        if vehicle_str:
+                            vehicle_info = [vehicle_str]
+                            has_vehicle = True
+                            vehicle_in_description = True
+                
+                # Display vehicle info if we found any
+                if has_vehicle and vehicle_info:
+                    vehicle_str = " ".join(vehicle_info)
+                    vehicle_label = QLabel(f"Vehicle: {vehicle_str}")
+                    vehicle_label.setStyleSheet("color: #0078d4; font-size: 12px;")
+                    vehicle_label.setWordWrap(True)
+                    details_layout.addWidget(vehicle_label)
+                
+                # Add VIN if available
+                if opportunity.vin:
+                    vin_label = QLabel(f"VIN: {opportunity.vin}")
+                    vin_label.setStyleSheet("color: #0078d4; font-size: 12px;")
+                    details_layout.addWidget(vin_label)
+                
+                # Systems info (if available)
+                if hasattr(opportunity, 'systems') and opportunity.systems:
+                    systems_str = ""
+                    if isinstance(opportunity.systems, list):
+                        systems = []
+                        for system in opportunity.systems:
+                            if isinstance(system, dict) and "name" in system:
+                                systems.append(system["name"])
+                            elif isinstance(system, str):
+                                systems.append(system)
+                        systems_str = ", ".join(systems)
+                    
+                    if systems_str:
+                        systems_label = QLabel(f"Systems: {systems_str}")
+                        systems_label.setStyleSheet("color: #0078d4; font-size: 12px;")
+                        systems_label.setWordWrap(True)
+                        details_layout.addWidget(systems_label)
+                
+                # First comment or description (if available)
+                description = ""
+                if hasattr(opportunity, 'comments') and opportunity.comments and isinstance(opportunity.comments, list) and len(opportunity.comments) > 0:
+                    # Get the first comment's text
+                    if isinstance(opportunity.comments[0], dict) and 'text' in opportunity.comments[0]:
+                        description = opportunity.comments[0]['text']
+                elif opportunity.description:
+                    description = opportunity.description
+                    # Remove the Vehicle: line from displayed description if we already extracted it
+                    if vehicle_in_description:
+                        description = re.sub(r'Vehicle:\s+[^\n]+(\n|$)', '', description).strip()
+                
+                if description:
+                    # Truncate long descriptions
+                    max_length = 150
+                    if len(description) > max_length:
+                        description = description[:max_length] + "..."
+                    
+                    desc_label = QLabel(description)
+                    desc_label.setStyleSheet("color: #cccccc; font-size: 12px;")
+                    desc_label.setWordWrap(True)
+                    details_layout.addWidget(desc_label)
+                
+                title_section.addWidget(details_frame)
+            
+            header.addLayout(title_section, 1)  # Give title section more space
+            
+            # Status section
+            status_section = QHBoxLayout()
+            status_section.setSpacing(8)
+            
+            status_combo = QComboBox()
+            status_combo.addItems(["New", "In Progress", "Completed", "Needs Info"])
+            current_status = opportunity.display_status if hasattr(opportunity, 'display_status') else opportunity.status.title()
+            status_combo.setCurrentText(current_status)
+            status_combo.setStyleSheet(f"""
+                QComboBox {{
+                    background-color: #262626;
+                    color: white;
+                    border: 1px solid #404040;
+                    padding: {4 if self.is_compact else 6}px {8 if self.is_compact else 12}px;
+                    border-radius: 4px;
+                    min-width: {100 if self.is_compact else 140}px;
+                }}
+                QComboBox::drop-down {{
+                    border: none;
+                    padding-right: 8px;
+                }}
+                QComboBox::down-arrow {{
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 4px solid white;
+                }}
+            """)
+            
+            # Protect from accidental wheel scrolling
+            self.protect_combobox_from_wheel(status_combo)
+            
+            status_combo.setProperty("opportunity", opportunity)
+            status_combo.currentTextChanged.connect(self.handle_status_change)
+            status_section.addWidget(status_combo)
+            
+            header.addLayout(status_section)
+            card_layout.addLayout(header)
+            
+            # Buttons section (comment, view details)
+            buttons_layout = QHBoxLayout()
+            buttons_layout.setSpacing(8)
+            
+            # View Details button
+            if opportunity.description or opportunity.systems:
+                view_btn = QPushButton("View Details")
+                view_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #262626;
+                        color: #0078d4;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 6px 12px;
+                        font-size: 13px;
+                    }
+                    QPushButton:hover {
+                        background-color: #333333;
+                        color: #2196F3;
+                    }
+                """)
+                view_btn.clicked.connect(lambda checked, o=opportunity: self.focus_ticket(o.id))
+                buttons_layout.addWidget(view_btn)
+            
+            # Comments button
+            if hasattr(opportunity, 'comments') and opportunity.comments:
+                comments_btn = QPushButton(f"Comments ({len(opportunity.comments)})")
+            else:
+                comments_btn = QPushButton("Add Comment")
+            comments_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #262626;
+                    color: #0078d4;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    background-color: #333333;
+                    color: #2196F3;
+                }
+            """)
+            comments_btn.clicked.connect(lambda checked, o=opportunity: self.show_comments_dialog(o))
+            buttons_layout.addWidget(comments_btn)
+            
+            buttons_layout.addStretch()
+            
+            if not self.is_compact:
+                card_layout.addLayout(buttons_layout)
+            
+            card.setLayout(card_layout)
+            self.opportunities_layout.addWidget(card)
+            return card
+        
+        except Exception as e:
+            print(f"ERROR creating opportunity widget: {str(e)}")
+            print("Traceback:", traceback.format_exc())
+            return None
+
     def convert_to_local_time(self, utc_time: datetime) -> datetime:
         """Convert UTC timestamp to local timezone for display"""
         if not utc_time:
@@ -147,192 +537,39 @@ class DashboardWidget(QWidget):
         
         # Convert to local timezone
         return utc_time.astimezone(self.local_timezone)
-    
-    def keyPressEvent(self, event):
-        """Handle key press events"""
-        if event.key() == Qt.Key_5 and event.modifiers() == Qt.ControlModifier:
-            self.show_debug_dialog()
-        else:
-            super().keyPressEvent(event)
-            
-    def show_debug_dialog(self):
-        """Show debug dialog with current state information"""
-        if not self.debug_dialog:
-            self.debug_dialog = DebugDialog(self)
-            
-        debug_info = []
-        
-        # Dependencies check
-        debug_info.append("=== Dependencies Check ===")
+
+    def format_duration(self, duration: Optional[timedelta]) -> str:
+        """Format a timedelta into a readable string with error handling"""
         try:
-            import pkg_resources
-            required_packages = {
-                'PyQt5': '5.15.0',
-                'SQLAlchemy': '1.4.0',
-                'psycopg2-binary': '2.9.0',
-                'python-dotenv': '0.19.0',
-                'pandas': '1.3.0',
-                'numpy': '1.21.0',
-                'openpyxl': '3.0.0',
-                'requests': '2.26.0',
-                'Pillow': '8.3.0',
-                'python-dateutil': '2.8.2'
-            }
+            if duration is None:
+                return "N/A"
             
-            for package, min_version in required_packages.items():
-                try:
-                    version = pkg_resources.get_distribution(package).version
-                    debug_info.append(f"{package}: {version} (Required: {min_version})")
-                except pkg_resources.DistributionNotFound:
-                    debug_info.append(f"❌ {package}: Not installed")
+            if isinstance(duration, ColumnElement):
+                # If it's a SQLAlchemy column, we need to get its Python value
+                duration = cast(timedelta, duration)
             
-            # Check for zoneinfo (built-in module)
-            try:
-                import zoneinfo
-                debug_info.append("zoneinfo: Built-in module (Python 3.9+)")
-            except ImportError:
-                debug_info.append("❌ zoneinfo: Not available (requires Python 3.9+)")
-                
-        except Exception as e:
-            debug_info.append(f"Error checking dependencies: {str(e)}")
-        
-        # Database connection check
-        debug_info.append("\n=== Database Connection Status ===")
-        try:
-            db = SessionLocal()
-            # Test Neon connection using SQLAlchemy text()
-            result = db.execute(text("SELECT version()")).scalar()
-            debug_info.append(f"✅ Neon Database Connected")
-            debug_info.append(f"PostgreSQL Version: {result}")
+            total_seconds = int(duration.total_seconds())
+            days = total_seconds // 86400
+            hours = (total_seconds % 86400) // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
             
-            # Test database tables
-            tables = db.execute(text("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """)).fetchall()
-            debug_info.append("\nAvailable Tables:")
-            for table in tables:
-                debug_info.append(f"- {table[0]}")
+            parts: List[str] = []
+            if days > 0:
+                parts.append(f"{days}d")
+            if hours > 0 or days > 0:  # Show hours if there are days
+                parts.append(f"{hours:02d}h")
+            if minutes > 0 or hours > 0 or days > 0:  # Show minutes if there are hours or days
+                parts.append(f"{minutes:02d}m")
+            if not parts or seconds > 0:  # Always show seconds if no larger units or if there are seconds
+                parts.append(f"{seconds:02d}s")
             
-            # Test opportunity table
-            opp_count = db.query(Opportunity).count()
-            debug_info.append(f"\nTotal Opportunities: {opp_count}")
+            return " ".join(cast(Iterable[str], parts))
             
         except Exception as e:
-            debug_info.append(f"❌ Database Connection Error: {str(e)}")
-            debug_info.append(traceback.format_exc())
-        finally:
-            if 'db' in locals():
-                db.close()
-        
-        # Supabase connection check
-        debug_info.append("\n=== Supabase Connection Status ===")
-        try:
-            from app.services.supabase_storage import SupabaseStorageService
-            # Test Supabase connection
-            if SupabaseStorageService.test_connection():
-                debug_info.append("✅ Supabase Storage Connected")
-                # List buckets if connection is successful
-                buckets = SupabaseStorageService.list_buckets()
-                if buckets:
-                    debug_info.append("\nAvailable Buckets:")
-                    for bucket in buckets:
-                        debug_info.append(f"- {bucket}")
-                else:
-                    debug_info.append("\nNo buckets found in storage")
-            else:
-                debug_info.append("❌ Supabase Storage Connection Failed")
-                debug_info.append("Unable to connect to Supabase storage service")
-        except Exception as e:
-            debug_info.append(f"❌ Supabase Error: {str(e)}")
-            debug_info.append(traceback.format_exc())
-        
-        # Environment variables check
-        debug_info.append("\n=== Environment Variables ===")
-        required_env_vars = [
-            'DATABASE_URL',
-            'SUPABASE_URL',
-            'SUPABASE_KEY',
-            'SUPABASE_BUCKET'
-        ]
-        for var in required_env_vars:
-            value = os.getenv(var, '')
-            if value:
-                # Mask sensitive information
-                if 'key' in var.lower() or 'password' in var.lower() or 'secret' in var.lower():
-                    masked_value = value[:4] + '****' + value[-4:] if len(value) > 8 else '****'
-                elif '@' in value:  # For URLs with credentials
-                    masked_value = value.replace(value.split('@')[-1], '****')
-                else:
-                    masked_value = value
-                debug_info.append(f"✅ {var}: {masked_value}")
-            else:
-                debug_info.append(f"❌ {var}: Not set")
-        
-        # Current application state
-        debug_info.append("\n=== Application State ===")
-        debug_info.append(f"Current Filter: {self.current_filter}")
-        debug_info.append(f"Displayed Widgets: {len(self.opportunity_widgets)}")
-        
-        # User info
-        if self.current_user:
-            debug_info.append(f"\nCurrent User:")
-            debug_info.append(f"ID: {self.current_user.id}")
-            debug_info.append(f"Name: {self.current_user.first_name} {self.current_user.last_name}")
-            debug_info.append(f"Role: {self.current_user.role}")
-            debug_info.append(f"Team: {self.current_user.team}")
-        
-        # Recent errors
-        if hasattr(self, '_last_error'):
-            debug_info.append(f"\nLast Error: {self._last_error}")
-        
-        self.debug_dialog.debug_text.setText("\n".join(debug_info))
-        self.debug_dialog.show()
-        self.debug_dialog.raise_()
-        self.debug_dialog.activateWindow()
-        
-    def closeEvent(self, event: QCloseEvent) -> None:
-        """Handle closing of the dashboard window and cleanup all resources"""
-        try:
-            # Clean up widgets
-            self.cleanup_widgets()
-            
-            # Stop any running timers
-            if hasattr(self, 'refresh_timer'):
-                self.refresh_timer.stop()
-            
-            # Close database connections
-            try:
-                db = SessionLocal()
-                db.close()
-            except:
-                pass
-            
-            # Hide the window instead of closing it
-            event.ignore()
-            self.hide()
-            
-        except Exception as e:
-            print(f"Error during cleanup: {str(e)}")
-            print(traceback.format_exc())
-            event.ignore()  # Still ignore the event even if there's an error
-        
-    def cleanup_widgets(self) -> None:
-        """Safely clean up widgets"""
-        try:
-            # Clear all widgets from the layout
-            if hasattr(self, 'opportunities_layout'):
-                while self.opportunities_layout.count():
-                    item = self.opportunities_layout.takeAt(0)
-                    if item and item.widget():
-                        item.widget().deleteLater()
-            
-            # Clear the widget list
-            self.opportunity_widgets.clear()
-        except Exception as e:
-            print(f"Error during cleanup: {str(e)}")
-        
+            print(f"Error formatting duration: {str(e)}")
+            return "N/A"
+
     def protect_combobox_from_wheel(self, combobox: QComboBox) -> None:
         """Install event filter to protect combobox from accidental wheel scrolling"""
         class ComboBoxEventFilter(QObject):
@@ -347,7 +584,7 @@ class DashboardWidget(QWidget):
         combobox.installEventFilter(event_filter)
         # Store reference to prevent garbage collection
         combobox.event_filter = event_filter
-    
+
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(24, 24, 24, 24)
@@ -410,12 +647,12 @@ class DashboardWidget(QWidget):
         title_row.addWidget(refresh_btn, alignment=Qt.AlignRight)
         header_layout.addLayout(title_row)
         
-        # Filter row
+        # Filter buttons
         filter_row = QHBoxLayout()
         filter_row.setSpacing(8)
         
         filter_buttons = [
-            ("Active Tickets", "all"),
+            ("Active Tickets", "active_tickets"),
             ("My Tickets", "my_tickets"),
             ("New", "new"),
             ("In Progress", "in_progress"),
@@ -499,21 +736,32 @@ class DashboardWidget(QWidget):
         # Date range filter
         date_layout = QHBoxLayout()
         date_layout.addWidget(QLabel("Date Range:"))
-        self.date_from = QDateEdit()
-        self.date_from.setCalendarPopup(True)
-        self.date_from.setDate(QDate.currentDate().addDays(-30))  # Default to 30 days ago
-        date_layout.addWidget(self.date_from)
+        self.from_date = QDateEdit()
+        self.from_date.setCalendarPopup(True)
+        self.from_date.setDate(QDate.currentDate().addDays(-30))  # Default to 30 days ago
+        date_layout.addWidget(self.from_date)
         date_layout.addWidget(QLabel("to"))
-        self.date_to = QDateEdit()
-        self.date_to.setCalendarPopup(True)
-        self.date_to.setDate(QDate.currentDate().addDays(1))  # Include today and tomorrow
-        date_layout.addWidget(self.date_to)
+        self.to_date = QDateEdit()
+        self.to_date.setCalendarPopup(True)
+        self.to_date.setDate(QDate.currentDate().addDays(1))  # Include today and tomorrow
+        date_layout.addWidget(self.to_date)
         advanced_filter_layout.addLayout(date_layout)
+        
+        # Add field for "My Tickets" filter type selection
+        self.my_tickets_filter_type = QComboBox()
+        self.my_tickets_filter_type.addItem("Created")
+        self.my_tickets_filter_type.addItem("Assigned")
+        self.my_tickets_filter_type.addItem("Both")
+        self.my_tickets_filter_type.currentTextChanged.connect(self.filter_opportunities)
         
         # Create container for My Tickets specific filters
         self.my_tickets_filters = QWidget()
         my_tickets_layout = QHBoxLayout(self.my_tickets_filters)
         my_tickets_layout.setSpacing(16)
+        
+        # Add the filter type to the My Tickets filters
+        my_tickets_layout.addWidget(QLabel("Show:"))
+        my_tickets_layout.addWidget(self.my_tickets_filter_type)
         
         # Status filter
         self.status_filter = QComboBox()
@@ -546,6 +794,8 @@ class DashboardWidget(QWidget):
         self.status_filter.currentTextChanged.connect(self.filter_opportunities)
         # Protect from accidental wheel scrolling
         self.protect_combobox_from_wheel(self.status_filter)
+        
+        my_tickets_layout.addWidget(QLabel("Status:"))
         my_tickets_layout.addWidget(self.status_filter)
         
         # Assignment filter
@@ -572,12 +822,14 @@ class DashboardWidget(QWidget):
         """)
         self.assignment_filter.addItem("")  # Empty default option
         self.assignment_filter.addItem("All")
-        self.assignment_filter.addItem("Created by me")
-        self.assignment_filter.addItem("Assigned to me")
+        self.assignment_filter.addItem("Created By Me")
+        self.assignment_filter.addItem("Assigned To Me")
         self.assignment_filter.addItem("Unassigned")
         self.assignment_filter.currentTextChanged.connect(self.filter_opportunities)
         # Protect from accidental wheel scrolling
         self.protect_combobox_from_wheel(self.assignment_filter)
+        
+        my_tickets_layout.addWidget(QLabel("Assignment:"))
         my_tickets_layout.addWidget(self.assignment_filter)
         
         advanced_filter_layout.addWidget(self.my_tickets_filters)
@@ -620,8 +872,11 @@ class DashboardWidget(QWidget):
         
         advanced_filter_layout.addStretch()
         
+        # Flag for tracking if advanced filters are applied
+        self.advanced_filter_applied = False
+        
         # Initially hide the advanced filter frame
-        self.advanced_filter_frame.hide()
+        self.advanced_filter_frame.setVisible(False)
         layout.addWidget(self.advanced_filter_frame)
         
         layout.addLayout(header_layout)
@@ -689,10 +944,283 @@ class DashboardWidget(QWidget):
         
         self.setLayout(layout)
         self.setStyleSheet("background-color: #1e1e1e;")
+
+    def do_refresh(self, show_refresh_animation=False):
+        """Actually perform the refresh
         
-        # Load initial opportunities
-        self.load_opportunities()
+        Args:
+            show_refresh_animation: Whether to show the refresh animation
+        """
+        if self.is_loading:
+            return
+            
+        self.is_loading = True
         
+        # Only show refresh animation when explicitly requested
+        if show_refresh_animation:
+            self.show_refresh_animation()
+        
+        db = SessionLocal()
+        try:
+            # Clear existing widgets
+            self.cleanup_widgets()
+            
+            # Get opportunities based on filter
+            opportunities = self.get_filtered_opportunities(db)
+            
+            print(f"DEBUG: DashboardWidget refreshed {len(opportunities)} opportunities with filter '{self.current_filter}'")
+            
+            # Mark new opportunities as viewed and update toolbar
+            # Important: This must be consistent with how the notification system identifies "new" tickets
+            parent = self.parent()
+            if parent and hasattr(parent, 'toolbar'):
+                marked_count = 0
+                
+                # For all new status items visible in any view
+                for opp in opportunities:
+                    # Check status using normalized_status property
+                    if hasattr(opp, 'normalized_status') and opp.normalized_status == "new":
+                        if opp.id not in parent.toolbar.viewed_opportunities:
+                            print(f"DEBUG: Dashboard marking opportunity as viewed: {opp.id} (Status: {opp.status})")
+                            parent.toolbar.viewed_opportunities.add(opp.id)
+                            marked_count += 1
+                
+                if marked_count > 0:
+                    print(f"DEBUG: Dashboard marked {marked_count} opportunities as viewed")
+                    # Update notification badge
+                    parent.toolbar.check_updates()
+            
+            # Add opportunity widgets
+            for opportunity in opportunities:
+                self.add_opportunity_widget(opportunity)
+                
+            # Update scroll area contents
+            self.opportunities_container.adjustSize()
+            
+        except Exception as e:
+            print(f"Error refreshing opportunities: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+        finally:
+            self.is_loading = False
+            db.close()
+            
+            # Only show refresh confirmation when animation was shown
+            if show_refresh_animation:
+                self.hide_refresh_animation()
+
+    def cleanup_widgets(self) -> None:
+        """Safely clean up widgets"""
+        try:
+            # Clear all widgets from the layout
+            if hasattr(self, 'opportunities_layout'):
+                while self.opportunities_layout.count():
+                    item = self.opportunities_layout.takeAt(0)
+                    if item and item.widget():
+                        item.widget().deleteLater()
+            
+            # Clear the widget list
+            self.opportunity_widgets.clear()
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")
+    
+    def show_refresh_animation(self):
+        """Show the refresh animation in the center of the view"""
+        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
+            return
+            
+        # Position in center of visible area
+        viewport_rect = self.scroll_area.viewport().rect()
+        global_pos = self.scroll_area.viewport().mapToGlobal(viewport_rect.center())
+        local_pos = self.mapFromGlobal(global_pos)
+        
+        # Position the spinner
+        self.refresh_animation.move(local_pos.x() - 20, local_pos.y() - 20)
+        self.refresh_animation.raise_()  # Make sure it's on top
+        self.refresh_animation.show()
+        
+        # Start spinner animation
+        self.spinner_angle = 0
+        self.spinner_timer.start(50)  # Update every 50ms
+        
+        # Update immediately to show first frame
+        self.update_spinner()
+        print("DEBUG: Showing refresh animation")
+    
+    def hide_refresh_animation(self):
+        """Hide refresh animation and show confirmation"""
+        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
+            return
+            
+        # Stop and hide spinner
+        self.spinner_timer.stop()
+        self.refresh_animation.hide()
+        
+        # Show "Refreshed!" message where the spinner was
+        self.refresh_message.setText("Refreshed!")
+        self.refresh_message.adjustSize()
+        
+        pos = self.refresh_animation.pos()
+        self.refresh_message.move(
+            pos.x() - (self.refresh_message.width() - self.refresh_animation.width()) // 2,
+            pos.y() - (self.refresh_message.height() - self.refresh_animation.height()) // 2
+        )
+        
+        # Show with full opacity
+        self.fade_opacity = 1.0
+        self.refresh_message.setStyleSheet("""
+            QLabel {
+                color: #0078d4;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: rgba(30, 30, 30, 220);
+                border-radius: 4px;
+                padding: 6px 10px;
+            }
+        """)
+        self.refresh_message.raise_()  # Make sure it's on top
+        self.refresh_message.show()
+        
+        # Start fade timer
+        self.fade_timer.start(50)  # Fade over time
+        print("DEBUG: Showing refresh completion message")
+    
+    def update_spinner(self):
+        """Update the spinner animation frame"""
+        if not self.refresh_animation or not self.refresh_animation.isVisible():
+            return
+            
+        self.spinner_angle = (self.spinner_angle + 10) % 360
+        
+        # Draw the spinner
+        pixmap = QPixmap(40, 40)
+        pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Set color for the spinner
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#0078d4"))
+        
+        # Draw the spinning arc
+        rect = QRect(5, 5, 30, 30)
+        painter.drawPie(rect, self.spinner_angle * 16, 120 * 16)  # 120 degrees arc
+        
+        # Add a white dot at the end of the arc for better visibility
+        end_angle = (self.spinner_angle + 120) % 360
+        end_x = 20 + 15 * math.cos(math.radians(end_angle))
+        end_y = 20 + 15 * math.sin(math.radians(end_angle))
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(QPoint(int(end_x), int(end_y)), 3, 3)
+        
+        painter.end()
+        
+        self.refresh_animation.setPixmap(pixmap)
+    
+    def fade_message(self):
+        """Fade out the refresh confirmation message"""
+        if not self.refresh_message or not self.refresh_message.isVisible():
+            self.fade_timer.stop()
+            return
+            
+        self.fade_opacity -= 0.05
+        if self.fade_opacity <= 0:
+            self.refresh_message.hide()
+            self.fade_timer.stop()
+            return
+            
+        # Update opacity using stylesheet
+        self.refresh_message.setStyleSheet(f"""
+            QLabel {{
+                color: #0078d4;
+                font-size: 14px;
+                font-weight: bold;
+                background-color: rgba(30, 30, 30, {int(220 * self.fade_opacity)});
+                border-radius: 4px;
+                padding: 6px 10px;
+            }}
+        """)
+
+    def load_opportunities(self, show_refresh_animation=False):
+        """Load opportunities based on current filter
+        
+        Args:
+            show_refresh_animation: Whether to show the refresh animation
+                                   True when triggered by refresh button,
+                                   False during initial load or other automatic calls
+        """
+        if self.is_loading:
+            return
+            
+        self.is_loading = True
+        
+        # Only show refresh animation when explicitly requested (e.g., from refresh button)
+        if show_refresh_animation:
+            self.show_refresh_animation()
+        
+        try:
+            # Clear existing widgets
+            self.cleanup_widgets()
+            
+            # Extra debug - print current filter and UI state
+            print(f"\nDEBUG: Loading opportunities with filter '{self.current_filter}'")
+            print(f"DEBUG: Current UI buttons checked state:")
+            if hasattr(self, 'filter_buttons'):
+                for filter_id, btn in self.filter_buttons.items():
+                    print(f"  {filter_id}: {btn.isChecked()}")
+                    
+            db = SessionLocal()
+            try:
+                # Get opportunities based on filter
+                opportunities = self.get_filtered_opportunities(db)
+                
+                print(f"DEBUG: DashboardWidget loaded {len(opportunities)} opportunities with filter '{self.current_filter}'")
+                
+                # Store last error if any
+                self._last_error = None
+                
+                # Mark new opportunities as viewed and update toolbar
+                # Important: This must be consistent with how the notification system identifies "new" tickets
+                parent = self.parent()
+                if parent and hasattr(parent, 'toolbar'):
+                    marked_count = 0
+                    
+                    # For all new status items visible in any view
+                    for opp in opportunities:
+                        # Check status using normalized_status property
+                        if hasattr(opp, 'normalized_status') and opp.normalized_status == "new":
+                            if opp.id not in parent.toolbar.viewed_opportunities:
+                                print(f"DEBUG: Dashboard marking opportunity as viewed: {opp.id} (Status: {opp.status})")
+                                parent.toolbar.viewed_opportunities.add(opp.id)
+                                marked_count += 1
+                
+                    if marked_count > 0:
+                        print(f"DEBUG: Dashboard marked {marked_count} opportunities as viewed")
+                        # Update notification badge
+                        parent.toolbar.check_updates()
+                
+                # Add opportunity widgets
+                for opportunity in opportunities:
+                    self.add_opportunity_widget(opportunity)
+                    
+                # Update scroll area contents
+                self.opportunities_container.adjustSize()
+                
+            except Exception as e:
+                self._last_error = str(e)
+                print(f"Error loading opportunities: {str(e)}")
+                print(traceback.format_exc())
+            finally:
+                db.close()
+                
+        finally:
+            self.is_loading = False
+            
+            # Only show refresh confirmation when animation was shown
+            if show_refresh_animation:
+                self.hide_refresh_animation()
+    
     def apply_filter(self, filter_id):
         """Apply filter and reload opportunities"""
         # Update filter buttons visual state
@@ -725,132 +1253,91 @@ class DashboardWidget(QWidget):
     def reset_filters(self):
         """Reset advanced filters to default values"""
         # Set date range to last 30 days instead of 7 days to include more recent tickets
-        self.date_from.setDate(QDate.currentDate().addDays(-30))
-        self.date_to.setDate(QDate.currentDate().addDays(1))  # Include today and tomorrow to ensure all recent tickets show
+        self.from_date.setDate(QDate.currentDate().addDays(-30))
+        self.to_date.setDate(QDate.currentDate().addDays(1))  # Include today and tomorrow to ensure all recent tickets show
         
         if self.current_filter == "my_tickets":
             self.status_filter.setCurrentText("")
             self.assignment_filter.setCurrentText("")
+            self.my_tickets_filter_type.setCurrentText("Created")
         
         # Reset the advanced filter flag
         self.advanced_filter_applied = False
         self.apply_advanced_filters()
-
-    def get_filtered_opportunities(self, db: Session) -> List[Opportunity]:
-        """Get opportunities based on current filter and advanced filter settings"""
-        query = db.query(Opportunity)
+    
+    def toggle_view_mode(self):
+        """Toggle between compact and expanded view modes"""
+        self.is_compact = not self.is_compact
+        self.view_toggle_btn.setText("Compact View" if self.is_compact else "Expanded View")
         
-        # Base filters
-        if self.current_filter == "new":
-            try:
-                # Simplify the approach - use LOWER directly for more reliable case-insensitive comparison
-                query = query.filter(Opportunity.status.ilike("new"))
-                print(f"DEBUG: Applying NEW filter with simple ILIKE, SQL: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
-                
-                # Execute query to check if results are returned
-                test_results = query.count()
-                print(f"DEBUG: NEW filter query returned {test_results} results")
-                
-                # If no results, try direct SQL as fallback
-                if test_results == 0:
-                    print("DEBUG: No results with ORM query, trying direct SQL fallback")
-                    # Reset query
-                    query = db.query(Opportunity)
-                    # Try with direct SQL expression
-                    from sqlalchemy import text
-                    query = query.filter(text("LOWER(status) = 'new'"))
-                    
-                    # Test again
-                    test_results = query.count()
-                    print(f"DEBUG: NEW filter with direct SQL returned {test_results} results")
-            except Exception as e:
-                # Log error and fall back to simpler approach
-                print(f"DEBUG: Error in query: {str(e)}")
-                query = db.query(Opportunity)
-                query = query.filter(Opportunity.status.ilike("new"))
-                print(f"DEBUG: Falling back to simple ILIKE: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
-        elif self.current_filter == "in_progress":
-            query = query.filter(Opportunity.status.ilike("in progress"))
-        elif self.current_filter == "completed":
-            query = query.filter(Opportunity.status.ilike("completed"))
-        elif self.current_filter == "needs_info":
-            query = query.filter(Opportunity.status.ilike("needs info"))
-        elif self.current_filter == "my_tickets" and self.current_user:
-            # Show tickets where user is either creator or acceptor
-            query = query.filter(
-                (Opportunity.creator_id == self.current_user.id) |
-                (Opportunity.acceptor_id == self.current_user.id)
-            )
-            
-            # Apply status filter if set
-            if hasattr(self, 'status_filter') and self.status_filter.currentText() and self.status_filter.currentText() != "All":
-                query = query.filter(Opportunity.status.ilike(self.status_filter.currentText().lower()))
-                
-            # Apply assignment filter if set
-            if hasattr(self, 'assignment_filter') and self.assignment_filter.currentText():
-                assignment = self.assignment_filter.currentText()
-                if assignment == "Created by me":
-                    query = query.filter(Opportunity.creator_id == self.current_user.id)
-                elif assignment == "Assigned to me":
-                    query = query.filter(Opportunity.acceptor_id == self.current_user.id)
-                elif assignment == "Unassigned":
-                    query = query.filter(Opportunity.acceptor_id.is_(None))
-        elif self.current_filter == "all":
-            # For "all" filter, show all tickets EXCEPT completed ones
-            query = query.filter(~Opportunity.status.ilike("completed"))
-            print(f"DEBUG: Applying ALL filter (excluding completed tickets)")
+        # Update window size
+        if self.is_compact:
+            screen = QApplication.primaryScreen().availableGeometry()
+            self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller size
         else:
-            # If unrecognized filter, don't apply any filtering
-            print(f"DEBUG: No status filter applied for unrecognized filter: '{self.current_filter}'")
+            screen = QApplication.primaryScreen().availableGeometry()
+            self.resize(int(screen.width() * 0.8), int(screen.height() * 0.8))
         
-        # Apply date filters if they exist and are set AND if there are filters being used
-        # (if we're in "new" filter mode, we want to see ALL new tickets regardless of date)
-        if hasattr(self, 'date_from') and hasattr(self, 'date_to'):
-            start_date = self.date_from.date().toPyDate()
-            end_date = self.date_to.date().toPyDate()
+        # Refresh the opportunities to update their layout
+        self.load_opportunities() 
+
+    def focus_ticket(self, ticket_id):
+        """Focus on a specific ticket by ID"""
+        if not ticket_id:
+            return
             
-            # Only apply date filters if we're using a filter other than "new"
-            # or if specifically requested through the advanced filter button
-            apply_date_filter = self.current_filter != "new" or getattr(self, 'advanced_filter_applied', False)
-            
-            if start_date and end_date and apply_date_filter:
-                utc = ZoneInfo('UTC')
-                query = query.filter(
-                    Opportunity.created_at.between(
-                        datetime.combine(start_date, datetime.min.time(), tzinfo=utc),
-                        datetime.combine(end_date, datetime.max.time(), tzinfo=utc)
-                    ))
-                print(f"DEBUG: Applied date filter: {start_date} to {end_date}")
-            else:
-                print(f"DEBUG: Skipped date filter for filter mode: {self.current_filter}")
+        # Ensure the ticket is loaded
+        self.current_filter = "active_tickets"  # Switch to all tickets view
+        self.load_opportunities()
         
-        # Add additional debug print to show the final query
-        print(f"DEBUG: Final query SQL: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
-        return query.order_by(Opportunity.created_at.desc()).all()
+        # Find and scroll to the ticket widget
+        if ticket_id in self.opportunity_widgets:
+            widget = self.opportunity_widgets[ticket_id]
+            # Ensure the widget is visible
+            scroll_area = self.findChild(QScrollArea)
+            if scroll_area:
+                # Calculate position to scroll to
+                widget_pos = widget.mapTo(scroll_area.widget(), QPoint(0, 0))
+                scroll_area.ensureVisible(0, widget_pos.y(), 0, widget.height() // 2)
+                
+                # Highlight the ticket briefly
+                original_style = widget.styleSheet()
+                highlight_style = """
+                    QFrame {
+                        background-color: #0078d4;
+                        border-radius: 6px;
+                        padding: 12px;
+                    }
+                """
+                widget.setStyleSheet(highlight_style)
+                
+                # Reset style after a delay
+                QTimer.singleShot(1000, lambda: widget.setStyleSheet(original_style))
 
-    def format_file_size(self, size_in_bytes):
-        """Format file size in a human-readable format"""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_in_bytes < 1024.0:
-                return f"{size_in_bytes:.1f} {unit}"
-            size_in_bytes /= 1024.0
-        return f"{size_in_bytes:.1f} TB"
-
-    def open_file(self, file):
-        """Open the file using the system's default application"""
+    def show_comments_dialog(self, opportunity):
+        """Show dialog for viewing and adding comments"""
         try:
-            from app.services.supabase_storage import SupabaseStorageService
+            # Get fresh opportunity data from database
+            db = SessionLocal()
+            fresh_opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
+            if fresh_opp:
+                # Update the opportunity object with fresh data
+                opportunity.comments = fresh_opp.comments
+            db.close()
             
-            if SupabaseStorageService.file_exists(file.storage_path):
-                if SupabaseStorageService.open_file(file.storage_path):
-                    print(f"Successfully opened file: {file.original_name}")
-                else:
-                    QMessageBox.warning(self, "Error Opening File", "Could not open the file with the default application.")
-            else:
-                QMessageBox.warning(self, "File Not Found", "The file could not be found in the storage location.")
-        except Exception as e:
-            QMessageBox.warning(self, "Error Opening File", f"An error occurred while trying to open the file: {e}")
+            dialog = CommentDialog(opportunity, self)
+            if dialog.exec_() == QDialog.Accepted:
+                comment = dialog.get_comment()
+                if comment:
+                    print(f"Adding comment: {comment}")  # Debug print
+                    # Add the comment and update the dashboard
+                    self.add_comment(opportunity, comment)
 
+        except Exception as e:
+            print(f"Error showing comments dialog: {str(e)}")
+            print("Traceback:", traceback.format_exc())
+            QMessageBox.critical(self, "Error", f"An error occurred while showing comments: {str(e)}")
+    
     def handle_status_change(self, new_status):
         """Handle status change from combo box"""
         try:
@@ -890,6 +1377,73 @@ class DashboardWidget(QWidget):
             print(f"ERROR in handle_status_change: {str(e)}")
             print("Traceback:", traceback.format_exc())
             QMessageBox.critical(self, "Error", f"An error occurred while handling status change: {str(e)}")
+    
+    def add_comment(self, opportunity, comment):
+        """Add a comment to an opportunity"""
+        try:
+            now = datetime.now(timezone.utc)
+            db = SessionLocal()
+            
+            # Get fresh opportunity data
+            opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
+            if not opp:
+                print("ERROR: Opportunity not found")
+                return None
+            
+            # Initialize comments list if it doesn't exist
+            if opp.comments is None:
+                opp.comments = []
+            
+            # Add the new comment with consistent structure
+            comment_data = {
+                'user_id': str(self.current_user.id),
+                'user_name': f"{self.current_user.first_name} {self.current_user.last_name}",
+                'text': comment,
+                'timestamp': now.isoformat()  # Store as ISO format string
+            }
+            
+            # Debug print
+            print(f"Adding comment: {comment_data}")
+            print(f"Current comments: {opp.comments}")
+            
+            # Append the new comment to the JSONB array
+            opp.comments = opp.comments + [comment_data]
+                
+            print(f"Updated comments: {opp.comments}")
+            
+            # Create notification for the other party
+            target_user_id = opp.creator_id if self.current_user.id != opp.creator_id else opp.acceptor_id
+            if target_user_id:
+                notification = Notification(
+                    user_id=target_user_id,
+                    opportunity_id=opp.id,
+                    type="comment",
+                    message=f"New comment on ticket '{opp.title}' from {self.current_user.first_name} {self.current_user.last_name}",
+                    created_at=now,
+                    read=False
+                )
+                db.add(notification)
+            
+            # Commit the changes
+            db.commit()
+            print(f"Comment saved successfully. Total comments: {len(opp.comments)}")
+            
+            # Update the original opportunity object with new comments
+            opportunity.comments = opp.comments
+            
+            # Force a refresh of the dashboard to update comment counts
+            self.load_opportunities()
+            
+            # Show success message
+            QMessageBox.information(self, "Success", "Comment added successfully!")
+            
+        except Exception as e:
+            print(f"ERROR adding comment: {str(e)}")
+            print("Traceback:", traceback.format_exc())
+            db.rollback()
+            QMessageBox.critical(self, "Error", f"An error occurred while adding the comment: {str(e)}")
+        finally:
+            db.close()
 
     def update_status(self, opportunity: Opportunity, new_status: str, comment: Optional[str] = None) -> None:
         """Update the status of an opportunity"""
@@ -999,729 +1553,6 @@ class DashboardWidget(QWidget):
             print(f"ERROR in update_status: {str(e)}")
             print("Traceback:", traceback.format_exc())
 
-    def format_duration(self, duration: Optional[timedelta]) -> str:
-        """Format a timedelta into a readable string with error handling"""
-        try:
-            if duration is None:
-                return "N/A"
-            
-            if isinstance(duration, ColumnElement):
-                # If it's a SQLAlchemy column, we need to get its Python value
-                duration = cast(timedelta, duration)
-            
-            total_seconds = int(duration.total_seconds())
-            days = total_seconds // 86400
-            hours = (total_seconds % 86400) // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            
-            parts: List[str] = []
-            if days > 0:
-                parts.append(f"{days}d")
-            if hours > 0 or days > 0:  # Show hours if there are days
-                parts.append(f"{hours:02d}h")
-            if minutes > 0 or hours > 0 or days > 0:  # Show minutes if there are hours or days
-                parts.append(f"{minutes:02d}m")
-            if not parts or seconds > 0:  # Always show seconds if no larger units or if there are seconds
-                parts.append(f"{seconds:02d}s")
-            
-            return " ".join(cast(Iterable[str], parts))
-            
-        except Exception as e:
-            print(f"Error formatting duration: {str(e)}")
-            return "N/A"
-
-    def create_filter_buttons(self):
-        """Create filter buttons"""
-        filter_layout = QHBoxLayout()
-        filter_layout.setSpacing(10)
-        
-        filters = [
-            ("Active Tickets", "all"),
-            ("My Tickets", "my_tickets"),
-            ("New", "new"),
-            ("In Progress", "in_progress"),
-            ("Needs Info", "needs_info"),
-            ("Completed", "completed")
-        ]
-        
-        button_style = """
-            QPushButton {
-                background-color: #3d3d3d;
-                color: #ffffff;
-                border: 1px solid #555555;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #4d4d4d;
-                border: 1px solid #666666;
-            }
-            QPushButton:checked {
-                background-color: #0078d4;
-                border: 1px solid #0078d4;
-            }
-        """
-        
-        for label, filter_id in filters:
-            btn = QPushButton(label)
-            btn.setCheckable(True)
-            btn.setChecked(filter_id == "all")  # Set "Active Tickets" as default
-            btn.setProperty("filter_id", filter_id)
-            btn.setStyleSheet(button_style)
-            btn.clicked.connect(lambda checked, fid=filter_id: self.apply_filter(fid))
-            filter_layout.addWidget(btn)
-        
-        filter_layout.addStretch()
-        return filter_layout
-
-    def toggle_view_mode(self):
-        """Toggle between compact and expanded view modes"""
-        self.is_compact = not self.is_compact
-        self.view_toggle_btn.setText("Compact View" if self.is_compact else "Expanded View")
-        
-        # Update window size
-        if self.is_compact:
-            screen = QApplication.primaryScreen().availableGeometry()
-            self.resize(int(screen.width() * 0.5), int(screen.height() * 0.6))  # Slightly smaller size
-        else:
-            screen = QApplication.primaryScreen().availableGeometry()
-            self.resize(int(screen.width() * 0.8), int(screen.height() * 0.8))
-        
-        # Refresh the opportunities to update their layout
-        self.load_opportunities() 
-
-    def focus_ticket(self, ticket_id):
-        """Focus on a specific ticket by ID"""
-        if not ticket_id:
-            return
-            
-        # Ensure the ticket is loaded
-        self.current_filter = "all"  # Switch to all tickets view
-        self.load_opportunities()
-        
-        # Find and scroll to the ticket widget
-        if ticket_id in self.opportunity_widgets:
-            widget = self.opportunity_widgets[ticket_id]
-            # Ensure the widget is visible
-            scroll_area = self.findChild(QScrollArea)
-            if scroll_area:
-                # Calculate position to scroll to
-                widget_pos = widget.mapTo(scroll_area.widget(), QPoint(0, 0))
-                scroll_area.ensureVisible(0, widget_pos.y(), 0, widget.height() // 2)
-                
-                # Highlight the ticket briefly
-                original_style = widget.styleSheet()
-                highlight_style = """
-                    QFrame {
-                        background-color: #0078d4;
-                        border-radius: 6px;
-                        padding: 12px;
-                    }
-                """
-                widget.setStyleSheet(highlight_style)
-                
-                # Reset style after a delay
-                QTimer.singleShot(1000, lambda: widget.setStyleSheet(original_style)) 
-
-    def show_comments_dialog(self, opportunity):
-        """Show dialog for viewing and adding comments"""
-        try:
-            # Get fresh opportunity data from database
-            db = SessionLocal()
-            fresh_opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
-            if fresh_opp:
-                # Update the opportunity object with fresh data
-                opportunity.comments = fresh_opp.comments
-            db.close()
-            
-            dialog = CommentDialog(opportunity, self)
-            if dialog.exec_() == QDialog.Accepted:
-                comment = dialog.get_comment()
-                if comment:
-                    print(f"Adding comment: {comment}")  # Debug print
-                    # Add the comment and update the dashboard
-                    self.add_comment(opportunity, comment)
-
-        except Exception as e:
-            print(f"Error showing comments dialog: {str(e)}")
-            print("Traceback:", traceback.format_exc())
-            QMessageBox.critical(self, "Error", f"An error occurred while showing comments: {str(e)}")
-
-    def add_comment(self, opportunity, comment):
-        """Add a comment to an opportunity"""
-        try:
-            now = datetime.now(timezone.utc)
-            db = SessionLocal()
-            
-            # Get fresh opportunity data
-            opp = db.query(Opportunity).filter(Opportunity.id == opportunity.id).first()
-            if not opp:
-                print("ERROR: Opportunity not found")
-                return None
-            
-            # Initialize comments list if it doesn't exist
-            if opp.comments is None:
-                opp.comments = []
-            
-            # Add the new comment with consistent structure
-            comment_data = {
-                'user_id': str(self.current_user.id),
-                'user_name': f"{self.current_user.first_name} {self.current_user.last_name}",
-                'text': comment,
-                'timestamp': now.isoformat()  # Store as ISO format string
-            }
-            
-            # Debug print
-            print(f"Adding comment: {comment_data}")
-            print(f"Current comments: {opp.comments}")
-            
-            # Append the new comment to the JSONB array
-            opp.comments = opp.comments + [comment_data]
-                
-            print(f"Updated comments: {opp.comments}")
-            
-            # Create notification for the other party
-            target_user_id = opp.creator_id if self.current_user.id != opp.creator_id else opp.acceptor_id
-            if target_user_id:
-                notification = Notification(
-                    user_id=target_user_id,
-                    opportunity_id=opp.id,
-                    type="comment",
-                    message=f"New comment on ticket '{opp.title}' from {self.current_user.first_name} {self.current_user.last_name}",
-                    created_at=now,
-                    read=False
-                )
-                db.add(notification)
-            
-            # Commit the changes
-            db.commit()
-            print(f"Comment saved successfully. Total comments: {len(opp.comments)}")
-            
-            # Update the original opportunity object with new comments
-            opportunity.comments = opp.comments
-            
-            # Force a refresh of the dashboard to update comment counts
-            self.load_opportunities()
-            
-            # Show success message
-            QMessageBox.information(self, "Success", "Comment added successfully!")
-            
-        except Exception as e:
-            print(f"ERROR adding comment: {str(e)}")
-            print("Traceback:", traceback.format_exc())
-            db.rollback()
-            QMessageBox.critical(self, "Error", f"An error occurred while adding the comment: {str(e)}")
-        finally:
-            db.close()
-
-    def show_refresh_animation(self):
-        """Show the refresh animation in the center of the view"""
-        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
-            return
-            
-        # Position in center of visible area
-        viewport_rect = self.scroll_area.viewport().rect()
-        global_pos = self.scroll_area.viewport().mapToGlobal(viewport_rect.center())
-        local_pos = self.mapFromGlobal(global_pos)
-        
-        # Position the spinner
-        self.refresh_animation.move(local_pos.x() - 20, local_pos.y() - 20)
-        self.refresh_animation.raise_()  # Make sure it's on top
-        self.refresh_animation.show()
-        
-        # Start spinner animation
-        self.spinner_angle = 0
-        self.spinner_timer.start(50)  # Update every 50ms
-        
-        # Update immediately to show first frame
-        self.update_spinner()
-        print("DEBUG: Showing refresh animation")
-
-    def hide_refresh_animation(self):
-        """Hide refresh animation and show confirmation"""
-        if not hasattr(self, 'refresh_animation') or not hasattr(self, 'refresh_message'):
-            return
-            
-        # Stop and hide spinner
-        self.spinner_timer.stop()
-        self.refresh_animation.hide()
-        
-        # Show "Refreshed!" message where the spinner was
-        self.refresh_message.setText("Refreshed!")
-        self.refresh_message.adjustSize()
-        
-        pos = self.refresh_animation.pos()
-        self.refresh_message.move(
-            pos.x() - (self.refresh_message.width() - self.refresh_animation.width()) // 2,
-            pos.y() - (self.refresh_message.height() - self.refresh_animation.height()) // 2
-        )
-        
-        # Show with full opacity
-        self.fade_opacity = 1.0
-        self.refresh_message.setStyleSheet("""
-            QLabel {
-                color: #0078d4;
-                font-size: 14px;
-                font-weight: bold;
-                background-color: rgba(30, 30, 30, 220);
-                border-radius: 4px;
-                padding: 6px 10px;
-            }
-        """)
-        self.refresh_message.raise_()  # Make sure it's on top
-        self.refresh_message.show()
-        
-        # Start fade timer
-        self.fade_timer.start(50)  # Fade over time
-        print("DEBUG: Showing refresh completion message")
-        
-    def update_spinner(self):
-        """Update the spinner animation frame"""
-        if not self.refresh_animation or not self.refresh_animation.isVisible():
-            return
-            
-        self.spinner_angle = (self.spinner_angle + 10) % 360
-        
-        # Draw the spinner
-        pixmap = QPixmap(40, 40)
-        pixmap.fill(Qt.transparent)
-        
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Set color for the spinner
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#0078d4"))
-        
-        # Draw the spinning arc
-        rect = QRect(5, 5, 30, 30)
-        painter.drawPie(rect, self.spinner_angle * 16, 120 * 16)  # 120 degrees arc
-        
-        # Add a white dot at the end of the arc for better visibility
-        end_angle = (self.spinner_angle + 120) % 360
-        end_x = 20 + 15 * math.cos(math.radians(end_angle))
-        end_y = 20 + 15 * math.sin(math.radians(end_angle))
-        painter.setBrush(QColor("#ffffff"))
-        painter.drawEllipse(QPoint(int(end_x), int(end_y)), 3, 3)
-        
-        painter.end()
-        
-        self.refresh_animation.setPixmap(pixmap)
-        
-    def fade_message(self):
-        """Fade out the refresh confirmation message"""
-        if not self.refresh_message or not self.refresh_message.isVisible():
-            self.fade_timer.stop()
-            return
-            
-        self.fade_opacity -= 0.05
-        if self.fade_opacity <= 0:
-            self.refresh_message.hide()
-            self.fade_timer.stop()
-            return
-            
-        # Update opacity using stylesheet
-        self.refresh_message.setStyleSheet(f"""
-            QLabel {{
-                color: #0078d4;
-                font-size: 14px;
-                font-weight: bold;
-                background-color: rgba(255, 255, 255, {int(220 * self.fade_opacity)});
-                border-radius: 4px;
-                padding: 6px 10px;
-            }}
-        """)
-        
-    def do_refresh(self, show_refresh_animation=False):
-        """Actually perform the refresh
-        
-        Args:
-            show_refresh_animation: Whether to show the refresh animation
-        """
-        if self.is_loading:
-            return
-            
-        self.is_loading = True
-        
-        # Only show refresh animation when explicitly requested
-        if show_refresh_animation:
-            self.show_refresh_animation()
-        
-        db = SessionLocal()
-        try:
-            # Clear existing widgets
-            self.cleanup_widgets()
-            
-            # Get opportunities based on filter
-            opportunities = self.get_filtered_opportunities(db)
-            
-            print(f"DEBUG: DashboardWidget refreshed {len(opportunities)} opportunities with filter '{self.current_filter}'")
-            
-            # Mark new opportunities as viewed and update toolbar
-            # Important: This must be consistent with how the notification system identifies "new" tickets
-            parent = self.parent()
-            if parent and hasattr(parent, 'toolbar'):
-                marked_count = 0
-                
-                # For all new status items visible in any view
-                for opp in opportunities:
-                    # Check status using normalized_status property
-                    if hasattr(opp, 'normalized_status') and opp.normalized_status == "new":
-                        if opp.id not in parent.toolbar.viewed_opportunities:
-                            print(f"DEBUG: Dashboard marking opportunity as viewed: {opp.id} (Status: {opp.status})")
-                            parent.toolbar.viewed_opportunities.add(opp.id)
-                            marked_count += 1
-                
-                if marked_count > 0:
-                    print(f"DEBUG: Dashboard marked {marked_count} opportunities as viewed")
-                    # Update notification badge
-                    parent.toolbar.check_updates()
-            
-            # Add opportunity widgets
-            for opportunity in opportunities:
-                self.add_opportunity_widget(opportunity)
-                
-            # Update scroll area contents
-            self.opportunities_container.adjustSize()
-            
-        except Exception as e:
-            print(f"Error refreshing opportunities: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-        finally:
-            self.is_loading = False
-            db.close()
-            
-            # Only show refresh confirmation when animation was shown
-            if show_refresh_animation:
-                self.hide_refresh_animation()
-
-    def load_opportunities(self, show_refresh_animation=False):
-        """Load opportunities based on current filter
-        
-        Args:
-            show_refresh_animation: Whether to show the refresh animation
-                                   True when triggered by refresh button,
-                                   False during initial load or other automatic calls
-        """
-        if self.is_loading:
-            return
-            
-        self.is_loading = True
-        
-        # Only show refresh animation when explicitly requested (e.g., from refresh button)
-        if show_refresh_animation:
-            self.show_refresh_animation()
-        
-        try:
-            # Clear existing widgets
-            self.cleanup_widgets()
-            
-            # Extra debug - print current filter and UI state
-            print(f"\nDEBUG: Loading opportunities with filter '{self.current_filter}'")
-            print(f"DEBUG: Current UI buttons checked state:")
-            if hasattr(self, 'filter_buttons'):
-                for filter_id, btn in self.filter_buttons.items():
-                    print(f"  {filter_id}: {btn.isChecked()}")
-                    
-            db = SessionLocal()
-            try:
-                # Get opportunities based on filter
-                opportunities = self.get_filtered_opportunities(db)
-                
-                print(f"DEBUG: DashboardWidget loaded {len(opportunities)} opportunities with filter '{self.current_filter}'")
-                
-                # Store last error if any
-                self._last_error = None
-                
-                # Dump all opportunities with their status for debugging
-                print("DEBUG: Loaded opportunities:")
-                for i, opp in enumerate(opportunities):
-                    status_str = opp.normalized_status if hasattr(opp, 'normalized_status') else opp.status.lower() if opp.status else "unknown"
-                    print(f"  {i}: ID={opp.id}, Status='{opp.status}', NormalizedStatus='{status_str}', Title='{opp.title}'")
-                
-                # Mark new opportunities as viewed and update toolbar
-                # Important: This must be consistent with how the notification system identifies "new" tickets
-                parent = self.parent()
-                if parent and hasattr(parent, 'toolbar'):
-                    marked_count = 0
-                    
-                    # Dump the current filter and all the statuses for debugging
-                    print(f"DEBUG: Dashboard refresh showing filter '{self.current_filter}'")
-                    status_counts = {}
-                    for opp in opportunities:
-                        status = opp.normalized_status if hasattr(opp, 'normalized_status') else opp.status.lower() if opp.status else "unknown"
-                        status_counts[status] = status_counts.get(status, 0) + 1
-                    print(f"DEBUG: Status distribution in refresh view: {status_counts}")
-                    
-                    # For all new status items visible in any view - use normalized_status for consistent comparison
-                    for opp in opportunities:
-                        # Check status using normalized_status property if available
-                        is_new = False
-                        if hasattr(opp, 'normalized_status'):
-                            is_new = opp.normalized_status == "new"
-                        else:
-                            is_new = opp.status and opp.status.lower() == "new"
-                            
-                        if is_new:
-                            if opp.id not in parent.toolbar.viewed_opportunities:
-                                print(f"DEBUG: Dashboard refresh marking opportunity as viewed: {opp.id} (Status: {opp.status}, Title: {opp.title})")
-                                parent.toolbar.viewed_opportunities.add(opp.id)
-                                marked_count += 1
-                    
-                    if marked_count > 0:
-                        print(f"DEBUG: Dashboard refresh marked {marked_count} opportunities as viewed")
-                        # Update notification badge
-                        parent.toolbar.check_updates()
-                
-                # Add opportunity widgets
-                for opportunity in opportunities:
-                    self.add_opportunity_widget(opportunity)
-                    
-                # Update scroll area contents
-                self.opportunities_container.adjustSize()
-                
-            except Exception as e:
-                self._last_error = str(e)
-                print(f"Error loading opportunities: {str(e)}")
-                print(traceback.format_exc())
-            finally:
-                db.close()
-                
-        finally:
-            self.is_loading = False
-            
-            # Only show refresh confirmation when animation was shown
-            if show_refresh_animation:
-                self.hide_refresh_animation()
-
-    def add_opportunity_widget(self, opportunity: Opportunity) -> Optional[QFrame]:
-        """Add a widget for displaying an opportunity"""
-        try:
-            card = QFrame()
-            card.setObjectName(f"card_{opportunity.id}")
-            
-            # Store the widget in our dictionary
-            self.opportunity_widgets[str(opportunity.id)] = card
-            
-            # Adjust card style based on view mode
-            card.setStyleSheet(f"""
-                QFrame {{
-                    background-color: #2d2d2d;
-                    border-radius: {6 if self.is_compact else 8}px;
-                    padding: {12 if self.is_compact else 20}px;
-                }}
-                QFrame:hover {{
-                    background-color: #333333;
-                }}
-            """)
-            
-            card_layout = QVBoxLayout()
-            card_layout.setSpacing(self.is_compact and 8 or 16)
-            card_layout.setContentsMargins(0, 0, 0, 0)
-            
-            # Header section with title and status
-            header = QHBoxLayout()
-            header.setSpacing(self.is_compact and 8 or 16)
-            
-            # Title and submitter info
-            title_section = QVBoxLayout()
-            title_section.setSpacing(self.is_compact and 2 or 4)
-            
-            # Adjust title style based on view mode
-            title = QLabel(f"{opportunity.display_title if hasattr(opportunity, 'display_title') else opportunity.title}")
-            title.setStyleSheet(f"""
-                color: #ffffff;
-                font-size: {14 if self.is_compact else 18}px;
-                font-weight: bold;
-            """)
-            title_section.addWidget(title)
-            
-            # Compact mode: combine ticket and submitter info
-            if self.is_compact:
-                # First line: Ticket ID and creator info
-                info_text = f"{opportunity.title} • {opportunity.creator.first_name} {opportunity.creator.last_name}"
-                if opportunity.creator.team:
-                    info_text += f" ({opportunity.creator.team})"
-                info = QLabel(info_text)
-                info.setStyleSheet("color: #999999; font-size: 12px;")
-                title_section.addWidget(info)
-
-                # Second line: Timestamps and acceptor info
-                time_info = QLabel()
-                time_text = []
-                
-                # Add created time
-                if opportunity.created_at:
-                    # Convert to local time for display
-                    local_created_time = self.convert_to_local_time(opportunity.created_at)
-                    created_time = local_created_time.strftime("%Y-%m-%d %H:%M")
-                    time_text.append(f"Created: {created_time}")
-                
-                # Add acceptor info if assigned
-                if opportunity.acceptor_id:
-                    acceptor = opportunity.acceptor
-                    if opportunity.status.lower() == "completed" and opportunity.completed_at:
-                        # Show both total time and work time for completed tickets
-                        total_time = opportunity.response_time if opportunity.response_time else None
-                        work_time = opportunity.work_time if opportunity.work_time else None
-                        
-                        # Convert completed time to local time
-                        if opportunity.completed_at:
-                            local_completed_time = self.convert_to_local_time(opportunity.completed_at)
-                            completed_time = local_completed_time.strftime("%Y-%m-%d %H:%M")
-                            time_text.append(f"Completed: {completed_time}")
-                        time_info_parts = []
-                        if total_time:
-                            time_info_parts.append(f"Total Time: {self.format_duration(total_time)}")
-                        if work_time:
-                            time_info_parts.append(f"Work Time: {self.format_duration(work_time)}")
-                            
-                        time_text.append(f"✓ Completed by {acceptor.first_name} {acceptor.last_name}")
-                        if time_info_parts:
-                            time_text.append(" • ".join(time_info_parts))
-                    elif opportunity.status.lower() == "in progress":
-                        time_text.append(f"Assigned to: {acceptor.first_name} {acceptor.last_name}")
-                        # Show both current total time and work time for in-progress tickets
-                        current_time = datetime.now(timezone.utc)
-                        total_duration = current_time - opportunity.created_at
-                        time_text.append(f"Total Time: {self.format_duration(total_duration)}")
-                        
-                        if opportunity.started_at:
-                            work_duration = current_time - opportunity.started_at
-                            time_text.append(f"Work Time: {self.format_duration(work_duration)}")
-                    else:
-                        time_text.append(f"Assigned to: {acceptor.first_name} {acceptor.last_name}")
-                
-                time_info.setText(" • ".join(time_text))
-                time_info.setStyleSheet("color: #888888; font-size: 11px;")
-                title_section.addWidget(time_info)
-            
-            else:
-                # Expanded mode: separate lines for better readability
-                info_row = QHBoxLayout()
-                info_row.setSpacing(16)
-                
-                # First row: Ticket ID and creator info
-                ticket = QLabel(opportunity.title)
-                ticket.setStyleSheet("color: #999999; font-size: 13px;")
-                info_row.addWidget(ticket)
-                
-                submitter = QLabel(f"by {opportunity.creator.first_name} {opportunity.creator.last_name}")
-                submitter.setStyleSheet("color: #999999; font-size: 13px;")
-                info_row.addWidget(submitter)
-                
-                if opportunity.creator.team:
-                    team = QLabel(f"({opportunity.creator.team})")
-                    team.setStyleSheet("color: #666666; font-size: 13px;")
-                    info_row.addWidget(team)
-                
-                info_row.addStretch()
-                title_section.addLayout(info_row)
-            
-            header.addLayout(title_section)
-            
-            # Status section
-            status_section = QHBoxLayout()
-            status_section.setSpacing(8)
-            
-            status_combo = QComboBox()
-            status_combo.addItems(["New", "In Progress", "Completed", "Needs Info"])
-            current_status = opportunity.display_status if hasattr(opportunity, 'display_status') else opportunity.status.title()
-            status_combo.setCurrentText(current_status)
-            status_combo.setStyleSheet(f"""
-                QComboBox {{
-                    background-color: #262626;
-                    color: white;
-                    border: 1px solid #404040;
-                    padding: {4 if self.is_compact else 6}px {8 if self.is_compact else 12}px;
-                    border-radius: 4px;
-                    min-width: {100 if self.is_compact else 140}px;
-                }}
-                QComboBox::drop-down {{
-                    border: none;
-                    padding-right: 8px;
-                }}
-                QComboBox::down-arrow {{
-                    image: none;
-                    border-left: 4px solid transparent;
-                    border-right: 4px solid transparent;
-                    border-top: 4px solid white;
-                }}
-            """)
-            
-            # Protect from accidental wheel scrolling
-            self.protect_combobox_from_wheel(status_combo)
-            
-            status_combo.setProperty("opportunity", opportunity)
-            status_combo.currentTextChanged.connect(self.handle_status_change)
-            status_section.addWidget(status_combo)
-            
-            header.addLayout(status_section)
-            card_layout.addLayout(header)
-            
-            # Add buttons for viewing details and comments
-            buttons_layout = QHBoxLayout()
-            buttons_layout.setSpacing(8)
-            
-            # View Details button
-            if opportunity.description or opportunity.systems:
-                view_btn = QPushButton("View Details")
-                view_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #262626;
-                        color: #0078d4;
-                        border: none;
-                        border-radius: 4px;
-                        padding: 6px 12px;
-                        font-size: 13px;
-                    }
-                    QPushButton:hover {
-                        background-color: #333333;
-                        color: #2196F3;
-                    }
-                """)
-                view_btn.clicked.connect(lambda checked, o=opportunity: self.focus_ticket(o.id))
-                buttons_layout.addWidget(view_btn)
-            
-            # Comments button
-            if hasattr(opportunity, 'comments') and opportunity.comments:
-                comments_btn = QPushButton(f"Comments ({len(opportunity.comments)})")
-            else:
-                comments_btn = QPushButton("Add Comment")
-            comments_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #262626;
-                    color: #0078d4;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 6px 12px;
-                    font-size: 13px;
-                }
-                QPushButton:hover {
-                    background-color: #333333;
-                    color: #2196F3;
-                }
-            """)
-            comments_btn.clicked.connect(lambda checked, o=opportunity: self.show_comments_dialog(o))
-            buttons_layout.addWidget(comments_btn)
-            
-            buttons_layout.addStretch()
-            
-            if not self.is_compact:
-                card_layout.addLayout(buttons_layout)
-            
-            card.setLayout(card_layout)
-            self.opportunities_layout.addWidget(card)
-            return card
-            
-        except Exception as e:
-            print(f"Error creating opportunity widget: {str(e)}")
-            traceback.print_exc()
-            return None
-
 class StatusChangeDialog(QDialog):
     def __init__(self, opportunity, new_status, parent=None):
         super().__init__(parent)
@@ -1811,7 +1642,7 @@ class StatusChangeDialog(QDialog):
     def accept(self):
         """Override accept to validate and store comment before closing"""
         self.comment = self.comment_edit.toPlainText().strip()
-        if not self.comment:
+        if self.new_status == "Needs Info" and not self.comment:
             QMessageBox.warning(self, "Empty Response", "Please enter a response before submitting.")
             return
         super().accept()
@@ -1968,4 +1799,4 @@ class CommentDialog(QDialog):
         
     def get_comment(self):
         """Return the stored comment"""
-        return self.comment 
+        return self.comment
