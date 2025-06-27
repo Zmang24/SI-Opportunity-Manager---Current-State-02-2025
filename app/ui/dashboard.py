@@ -259,8 +259,37 @@ class DashboardWidget(QWidget):
             title_section = QVBoxLayout()
             title_section.setSpacing(self.is_compact and 2 or 4)
             
-            # Adjust title style based on view mode
-            title = QLabel(f"{opportunity.display_title if hasattr(opportunity, 'display_title') else opportunity.title}")
+            # Display vehicle info as the main title instead of ticket number
+            vehicle_info_display = []
+            has_vehicle_for_title = False
+            
+            # Check if this is a referenced vehicle through a join
+            if hasattr(opportunity, 'vehicle') and opportunity.vehicle:
+                vehicle = opportunity.vehicle
+                if vehicle and hasattr(vehicle, 'year') and hasattr(vehicle, 'make') and hasattr(vehicle, 'model'):
+                    vehicle_info_display = [vehicle.year, vehicle.make, vehicle.model]
+                    has_vehicle_for_title = True
+            # Otherwise check for year/make/model attributes directly on opportunity
+            elif hasattr(opportunity, 'year') and opportunity.year and hasattr(opportunity, 'make') and opportunity.make and hasattr(opportunity, 'model') and opportunity.model:
+                vehicle_info_display = [opportunity.year, opportunity.make, opportunity.model]
+                has_vehicle_for_title = True
+            # Otherwise try to extract from description
+            elif opportunity.description:
+                # Look for "Vehicle: YEAR MAKE MODEL" pattern in the description
+                vehicle_match = re.search(r'Vehicle:\s+([^\n]+)', opportunity.description)
+                if vehicle_match:
+                    vehicle_str = vehicle_match.group(1).strip()
+                    if vehicle_str:
+                        vehicle_info_display = [vehicle_str]
+                        has_vehicle_for_title = True
+            
+            # Use vehicle info as title if available, otherwise fall back to ticket number
+            if has_vehicle_for_title and vehicle_info_display:
+                title_text = " ".join(vehicle_info_display)
+            else:
+                title_text = f"{opportunity.display_title if hasattr(opportunity, 'display_title') else opportunity.title}"
+            
+            title = QLabel(title_text)
             title.setStyleSheet(f"""
                 color: #ffffff;
                 font-size: {14 if self.is_compact else 18}px;
@@ -341,39 +370,11 @@ class DashboardWidget(QWidget):
                 details_layout.setContentsMargins(8, 8, 8, 8)
                 details_layout.setSpacing(6)
                 
-                # Vehicle info (if available)
-                vehicle_info = []
-                has_vehicle = False
-                vehicle_in_description = False
-                
-                # Check if this is a referenced vehicle through a join
-                if hasattr(opportunity, 'vehicle') and opportunity.vehicle:
-                    vehicle = opportunity.vehicle
-                    if vehicle and hasattr(vehicle, 'year') and hasattr(vehicle, 'make') and hasattr(vehicle, 'model'):
-                        vehicle_info = [vehicle.year, vehicle.make, vehicle.model]
-                        has_vehicle = True
-                # Otherwise check for year/make/model attributes directly on opportunity
-                elif hasattr(opportunity, 'year') and opportunity.year and hasattr(opportunity, 'make') and opportunity.make and hasattr(opportunity, 'model') and opportunity.model:
-                    vehicle_info = [opportunity.year, opportunity.make, opportunity.model]
-                    has_vehicle = True
-                # Otherwise try to extract from description
-                elif opportunity.description:
-                    # Look for "Vehicle: YEAR MAKE MODEL" pattern in the description
-                    vehicle_match = re.search(r'Vehicle:\s+([^\n]+)', opportunity.description)
-                    if vehicle_match:
-                        vehicle_str = vehicle_match.group(1).strip()
-                        if vehicle_str:
-                            vehicle_info = [vehicle_str]
-                            has_vehicle = True
-                            vehicle_in_description = True
-                
-                # Display vehicle info if we found any
-                if has_vehicle and vehicle_info:
-                    vehicle_str = " ".join(vehicle_info)
-                    vehicle_label = QLabel(f"Vehicle: {vehicle_str}")
-                    vehicle_label.setStyleSheet("color: #0078d4; font-size: 12px;")
-                    vehicle_label.setWordWrap(True)
-                    details_layout.addWidget(vehicle_label)
+                # Ticket number (moved from title to details)
+                ticket_label = QLabel(f"Ticket: {opportunity.display_title if hasattr(opportunity, 'display_title') else opportunity.title}")
+                ticket_label.setStyleSheet("color: #0078d4; font-size: 12px; font-weight: bold;")
+                ticket_label.setWordWrap(True)
+                details_layout.addWidget(ticket_label)
                 
                 # Add VIN if available
                 if opportunity.vin:
@@ -387,7 +388,9 @@ class DashboardWidget(QWidget):
                     if isinstance(opportunity.systems, list):
                         systems = []
                         for system in opportunity.systems:
-                            if isinstance(system, dict) and "name" in system:
+                            if isinstance(system, dict) and "system" in system:
+                                systems.append(system["system"])
+                            elif isinstance(system, dict) and "name" in system:
                                 systems.append(system["name"])
                             elif isinstance(system, str):
                                 systems.append(system)
@@ -407,9 +410,8 @@ class DashboardWidget(QWidget):
                         description = opportunity.comments[0]['text']
                 elif opportunity.description:
                     description = opportunity.description
-                    # Remove the Vehicle: line from displayed description if we already extracted it
-                    if vehicle_in_description:
-                        description = re.sub(r'Vehicle:\s+[^\n]+(\n|$)', '', description).strip()
+                    # Remove the Vehicle: line from displayed description since we now show vehicle in title
+                    description = re.sub(r'Vehicle:\s+[^\n]+(\n|$)', '', description).strip()
                 
                 if description:
                     # Create a container for the description with a frame

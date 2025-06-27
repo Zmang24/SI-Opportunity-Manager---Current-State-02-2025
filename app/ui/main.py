@@ -1803,6 +1803,11 @@ class MainWindow(QMainWindow):
         self.auth = AuthWidget()
         self.auth.authenticated.connect(self.on_authentication)
         self.auth.create_account_requested.connect(self.show_account_creation)
+        
+        # Initialize account creation widget
+        self.account_creation = AccountCreationWidget()
+        self.account_creation.account_created.connect(self.on_account_created)
+        
         self.auth.show()
         
     def _process_asyncio_events(self):

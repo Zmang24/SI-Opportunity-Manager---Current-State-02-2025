@@ -79,7 +79,7 @@ class AccountCreationWidget(QWidget):
                 padding: 8px;
                 border: 1px solid #555555;
                 border-radius: 4px;
-                min-width: 250px;
+                min-width: 300px;
             }
             QLineEdit:focus {
                 border: 1px solid #0078d4;
@@ -97,7 +97,7 @@ class AccountCreationWidget(QWidget):
                 padding: 8px;
                 border: 1px solid #555555;
                 border-radius: 4px;
-                min-width: 250px;
+                min-width: 300px;
             }
             QComboBox:hover {
                 border: 1px solid #666666;
@@ -252,7 +252,7 @@ class AccountCreationWidget(QWidget):
             }
         """)
         self.setWindowTitle("Create Account")
-        self.resize(600, 700)
+        self.resize(650, 720)
         
     def create_account(self):
         # Validate fields
@@ -266,9 +266,16 @@ class AccountCreationWidget(QWidget):
             QMessageBox.warning(self, "Error", "PINs do not match")
             return
         
-        # Validate email format (basic check)
-        if "@" not in self.fields["email"].text() or "." not in self.fields["email"].text():
-            QMessageBox.warning(self, "Error", "Please enter a valid email address")
+        # Validate email format (improved check)
+        email = self.fields["email"].text().strip()
+        if not self.is_valid_email(email):
+            QMessageBox.warning(self, "Error", "Please enter a valid email address (e.g., user@example.com)")
+            return
+        
+        # Validate PIN complexity
+        pin = self.fields["pin"].text()
+        if not self.is_valid_pin(pin):
+            QMessageBox.warning(self, "Error", "PIN must be at least 4 characters long")
             return
         
         # Validate role key and determine role
@@ -282,6 +289,12 @@ class AccountCreationWidget(QWidget):
             existing_user = db.query(User).filter(User.username == self.fields["username"].text()).first()
             if existing_user:
                 QMessageBox.warning(self, "Error", "Username already exists")
+                return
+            
+            # Check if email exists
+            existing_email = db.query(User).filter(User.email == email).first()
+            if existing_email:
+                QMessageBox.warning(self, "Error", "Email address already exists")
                 return
             
             # Create new user
@@ -320,4 +333,14 @@ class AccountCreationWidget(QWidget):
             if isinstance(field, QLineEdit) and field_id != 'department':
                 field.clear()
             elif isinstance(field, QComboBox):
-                field.setCurrentIndex(0) 
+                field.setCurrentIndex(0)
+    
+    def is_valid_email(self, email):
+        """Validate email format"""
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    
+    def is_valid_pin(self, pin):
+        """Validate PIN complexity"""
+        return len(pin) >= 4 

@@ -28,6 +28,16 @@ class PinResetDialog(QDialog):
         """)
         layout.addWidget(title)
         
+        # Instructions
+        instructions = QLabel("Enter your username and email to reset your PIN. Both must match your account information exactly.")
+        instructions.setStyleSheet("""
+            color: #cccccc;
+            font-size: 12px;
+            margin-bottom: 15px;
+        """)
+        instructions.setWordWrap(True)
+        layout.addWidget(instructions)
+        
         # Form layout
         form = QFormLayout()
         form.setSpacing(10)
@@ -42,6 +52,7 @@ class PinResetDialog(QDialog):
                 background-color: #3d3d3d;
                 color: white;
                 font-size: 14px;
+                min-width: 280px;
             }
             QLineEdit:focus {
                 border: 1px solid #0078d4;
@@ -127,7 +138,7 @@ class PinResetDialog(QDialog):
             }
         """)
         self.setWindowTitle("Reset PIN")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(500, 350)
         
     def reset_pin(self):
         username = self.username.text().strip()
@@ -141,6 +152,16 @@ class PinResetDialog(QDialog):
             
         if new_pin != confirm_pin:
             QMessageBox.warning(self, "Error", "PINs do not match")
+            return
+        
+        # Validate email format
+        if not self.is_valid_email(email):
+            QMessageBox.warning(self, "Error", "Please enter a valid email address (e.g., user@example.com)")
+            return
+        
+        # Validate PIN complexity
+        if not self.is_valid_pin(new_pin):
+            QMessageBox.warning(self, "Error", "PIN must be at least 4 characters long")
             return
             
         try:
@@ -166,6 +187,16 @@ class PinResetDialog(QDialog):
                 db.close()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to reset PIN: {str(e)}")
+    
+    def is_valid_email(self, email):
+        """Validate email format"""
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    
+    def is_valid_pin(self, pin):
+        """Validate PIN complexity"""
+        return len(pin) >= 4
 
 class AuthWidget(QWidget):
     authenticated = pyqtSignal(User)
