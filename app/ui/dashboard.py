@@ -1,10 +1,12 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QScrollArea, QFrame, QMessageBox, QComboBox, QDateEdit,
-                           QDialog, QTextEdit)
-from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect, QObject, QEvent
-from PyQt5.QtGui import QCloseEvent, QKeySequence, QPainter, QPixmap, QColor
+                           QDialog, QTextEdit, QSlider, QSizePolicy)
+from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QRect, QObject, QEvent, QSize
+from PyQt5.QtGui import QCloseEvent, QKeySequence, QPainter, QPixmap, QColor, QFont
 from app.database.connection import SessionLocal
-from app.models.models import Opportunity, Notification, ActivityLog, User, Vehicle
+from app.models.models import Opportunity, Notification, ActivityLog, User, Vehicle, File
+from sqlalchemy.orm import joinedload
+from app.services.supabase_storage import SupabaseStorageService
 from app.config import STORAGE_DIR
 import os
 import traceback
@@ -124,8 +126,8 @@ class DashboardWidget(QWidget):
         print(f"DEBUG: Applying filter: {self.current_filter}")
         print(f"DEBUG: Advanced filter applied: {self.advanced_filter_applied}")
         
-        # Base query
-        query = db.query(Opportunity)
+        # Base query with files relationship loaded
+        query = db.query(Opportunity).options(joinedload(Opportunity.files))
         
         # Apply filter based on filter button
         if self.current_filter == "active_tickets":
@@ -401,6 +403,60 @@ class DashboardWidget(QWidget):
                         systems_label.setStyleSheet("color: #0078d4; font-size: 12px;")
                         systems_label.setWordWrap(True)
                         details_layout.addWidget(systems_label)
+                
+                # Attachments info (if available)
+                if hasattr(opportunity, 'files') and opportunity.files:
+                    files_container = QFrame()
+                    files_container.setStyleSheet("""
+                        QFrame {
+                            background-color: transparent;
+                            border-radius: 0px;
+                            padding: 0px;
+                        }
+                    """)
+                    files_layout = QVBoxLayout(files_container)
+                    files_layout.setContentsMargins(0, 0, 0, 0)
+                    files_layout.setSpacing(2)
+                    
+                    # Attachments header
+                    attachments_header = QLabel(f"Attachments ({len(opportunity.files)}):")
+                    attachments_header.setStyleSheet("color: #0078d4; font-size: 12px; font-weight: bold;")
+                    files_layout.addWidget(attachments_header)
+                    
+                    # List attachments (show up to 3, then "and X more...")
+                    displayed_files = 0
+                    max_display = 3
+                    
+                    for file in opportunity.files:
+                        if displayed_files < max_display:
+                            file_link = QPushButton(f"📎 {file.display_name}")
+                            file_link.setStyleSheet("""
+                                QPushButton {
+                                    background-color: transparent;
+                                    color: #0078d4;
+                                    border: none;
+                                    text-align: left;
+                                    padding: 2px 0px;
+                                    font-size: 11px;
+                                }
+                                QPushButton:hover {
+                                    color: #2196F3;
+                                    text-decoration: underline;
+                                }
+                            """)
+                            file_link.setCursor(Qt.PointingHandCursor)
+                            file_link.clicked.connect(lambda checked, f=file: self.open_attachment(f))
+                            files_layout.addWidget(file_link)
+                            displayed_files += 1
+                    
+                    # If there are more files, show count
+                    remaining_files = len(opportunity.files) - displayed_files
+                    if remaining_files > 0:
+                        more_label = QLabel(f"... and {remaining_files} more file(s)")
+                        more_label.setStyleSheet("color: #888888; font-size: 11px; font-style: italic;")
+                        files_layout.addWidget(more_label)
+                    
+                    details_layout.addWidget(files_container)
                 
                 # First comment or description (if available)
                 description = ""
@@ -1588,6 +1644,168 @@ class DashboardWidget(QWidget):
             print(f"ERROR in update_status: {str(e)}")
             print("Traceback:", traceback.format_exc())
 
+    def open_attachment(self, file):
+        """Open or download an attachment file"""
+        try:
+            import subprocess
+            import platform
+            import tempfile
+            
+            # Get file extension to determine viewer
+            file_ext = os.path.splitext(file.display_name)[1].lower()
+            image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
+            pdf_extensions = {'.pdf'}
+            
+            # Determine file path
+            temp_file_path = None
+            
+            if file.storage_path.startswith('local'):
+                # Local storage
+                storage_path = file.storage_path.replace('local/', '')
+                full_path = os.path.join(STORAGE_DIR, storage_path)
+                
+                # Check if file exists
+                if not os.path.exists(full_path):
+                    QMessageBox.warning(
+                        self, 
+                        "File Not Found", 
+                        f"The file '{file.display_name}' could not be found at:\n{full_path}"
+                    )
+                    return
+                    
+                final_path = full_path
+                
+            else:
+                # Remote storage (Supabase) - download to temp location
+                print(f"Downloading remote file: {file.storage_path}")
+                try:
+                    temp_file_path = SupabaseStorageService.download_file(file.storage_path)
+                    if not temp_file_path:
+                        # If download fails, try to get a download URL
+                        file_url = SupabaseStorageService.get_file_url(file.storage_path, expires_in=3600)
+                        if file_url:
+                            QMessageBox.information(
+                                self,
+                                "File Access",
+                                f"File: {file.display_name}\n\n"
+                                f"The file could not be downloaded directly.\n"
+                                f"You can download it from this URL:\n\n{file_url}\n\n"
+                                f"(Link expires in 1 hour)"
+                            )
+                            return
+                        else:
+                            QMessageBox.warning(
+                                self,
+                                "File Access Error",
+                                f"Unable to access file: {file.display_name}\n\n"
+                                f"The file could not be opened or downloaded from cloud storage."
+                            )
+                            return
+                    final_path = temp_file_path
+                    
+                except Exception as remote_error:
+                    print(f"Error accessing remote file: {remote_error}")
+                    QMessageBox.critical(
+                        self,
+                        "Remote File Error",
+                        f"Error accessing file: {file.display_name}\n\n"
+                        f"Error: {str(remote_error)}"
+                    )
+                    return
+            
+            # Open with appropriate viewer
+            if file_ext in image_extensions:
+                # Open with built-in image viewer
+                try:
+                    viewer = ImageViewerDialog(final_path, file.display_name, self)
+                    viewer.exec_()
+                    # Clean up temp file if it was downloaded
+                    if temp_file_path and os.path.exists(temp_file_path):
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass  # Ignore cleanup errors
+                    return
+                except Exception as e:
+                    print(f"Error opening image viewer: {e}")
+                    # Fall back to external viewer
+                    
+            elif file_ext in pdf_extensions:
+                # Open with built-in PDF viewer
+                try:
+                    viewer = PDFViewerDialog(final_path, file.display_name, self)
+                    viewer.exec_()
+                    # Clean up temp file if it was downloaded
+                    if temp_file_path and os.path.exists(temp_file_path):
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass  # Ignore cleanup errors
+                    return
+                except Exception as e:
+                    print(f"Error opening PDF viewer: {e}")
+                    # Fall back to external viewer
+            
+                        # Fallback: Open with external application
+            try:
+                if platform.system() == 'Windows':
+                    os.startfile(final_path)
+                elif platform.system() == 'Darwin':  # macOS
+                    subprocess.run(['open', final_path])
+                else:  # Linux
+                    subprocess.run(['xdg-open', final_path])
+                    
+                print(f"Opened file with external application: {final_path}")
+                
+                # Clean up temp file if it was downloaded
+                if temp_file_path and os.path.exists(temp_file_path):
+                    # Delay cleanup to allow external app to load the file
+                    QTimer.singleShot(5000, lambda: self.cleanup_temp_file(temp_file_path))
+                
+            except Exception as e:
+                # If opening fails, show file info and offer to copy path
+                reply = QMessageBox.question(
+                    self,
+                    "Unable to Open File",
+                    f"Could not open '{file.display_name}' with default application.\n\n"
+                    f"File path: {final_path}\n\n"
+                    f"Would you like to copy the file path to clipboard?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                
+                if reply == QMessageBox.Yes:
+                    try:
+                        from PyQt5.QtWidgets import QApplication
+                        clipboard = QApplication.clipboard()
+                        clipboard.setText(final_path)
+                        QMessageBox.information(self, "Copied", "File path copied to clipboard!")
+                    except Exception as clip_error:
+                        print(f"Error copying to clipboard: {clip_error}")
+                
+                # Clean up temp file on error
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        os.unlink(temp_file_path)
+                    except:
+                        pass
+                        
+        except Exception as e:
+            print(f"Error opening attachment: {str(e)}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"An error occurred while trying to open the file:\n{str(e)}"
+            )
+    
+    def cleanup_temp_file(self, temp_file_path):
+        """Clean up a temporary file"""
+        try:
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                print(f"Cleaned up temporary file: {temp_file_path}")
+        except Exception as e:
+            print(f"Error cleaning up temporary file {temp_file_path}: {e}")
+
     def closeEvent(self, event: QCloseEvent) -> None:
         """Override close event to hide the dashboard instead of closing the application"""
         print("DEBUG: Dashboard close event triggered")
@@ -1690,6 +1908,292 @@ class DashboardWidget(QWidget):
         layout.addLayout(button_layout)
         
         dialog.exec_()
+
+class ImageViewerDialog(QDialog):
+    def __init__(self, file_path, file_name, parent=None):
+        super().__init__(parent)
+        self.file_path = file_path
+        self.file_name = file_name
+        self.zoom_factor = 1.0
+        self.initUI()
+        
+    def initUI(self):
+        self.setWindowTitle(f"Image Viewer - {self.file_name}")
+        self.setMinimumSize(800, 600)
+        self.resize(1000, 700)
+        
+        layout = QVBoxLayout()
+        
+        # Toolbar
+        toolbar = QHBoxLayout()
+        
+        # Zoom controls
+        zoom_out_btn = QPushButton("Zoom Out (-)")
+        zoom_out_btn.clicked.connect(self.zoom_out)
+        zoom_out_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        """)
+        toolbar.addWidget(zoom_out_btn)
+        
+        self.zoom_label = QLabel("100%")
+        self.zoom_label.setStyleSheet("color: white; font-weight: bold; margin: 0 10px;")
+        toolbar.addWidget(self.zoom_label)
+        
+        zoom_in_btn = QPushButton("Zoom In (+)")
+        zoom_in_btn.clicked.connect(self.zoom_in)
+        zoom_in_btn.setStyleSheet(zoom_out_btn.styleSheet())
+        toolbar.addWidget(zoom_in_btn)
+        
+        fit_btn = QPushButton("Fit to Window")
+        fit_btn.clicked.connect(self.fit_to_window)
+        fit_btn.setStyleSheet(zoom_out_btn.styleSheet())
+        toolbar.addWidget(fit_btn)
+        
+        actual_size_btn = QPushButton("Actual Size")
+        actual_size_btn.clicked.connect(self.actual_size)
+        actual_size_btn.setStyleSheet(zoom_out_btn.styleSheet())
+        toolbar.addWidget(actual_size_btn)
+        
+        toolbar.addStretch()
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #d83b01;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #ea4a1f;
+            }
+        """)
+        toolbar.addWidget(close_btn)
+        
+        layout.addLayout(toolbar)
+        
+        # Scroll area for image
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setAlignment(Qt.AlignCenter)
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                background-color: #2d2d2d;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+            }
+        """)
+        
+        # Image label
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setStyleSheet("background-color: #2d2d2d;")
+        
+        # Load and display image
+        self.original_pixmap = QPixmap(self.file_path)
+        if self.original_pixmap.isNull():
+            self.image_label.setText("Failed to load image")
+            self.image_label.setStyleSheet("color: white; font-size: 16px;")
+        else:
+            self.update_image()
+        
+        self.scroll_area.setWidget(self.image_label)
+        layout.addWidget(self.scroll_area)
+        
+        self.setLayout(layout)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #1e1e1e;
+            }
+            QLabel {
+                color: white;
+            }
+        """)
+        
+        # Fit to window initially
+        if not self.original_pixmap.isNull():
+            QTimer.singleShot(100, self.fit_to_window)
+    
+    def update_image(self):
+        if not self.original_pixmap.isNull():
+            scaled_pixmap = self.original_pixmap.scaled(
+                self.original_pixmap.size() * self.zoom_factor,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.image_label.setPixmap(scaled_pixmap)
+            self.image_label.resize(scaled_pixmap.size())
+            self.zoom_label.setText(f"{int(self.zoom_factor * 100)}%")
+    
+    def zoom_in(self):
+        if self.zoom_factor < 5.0:
+            self.zoom_factor *= 1.25
+            self.update_image()
+    
+    def zoom_out(self):
+        if self.zoom_factor > 0.1:
+            self.zoom_factor /= 1.25
+            self.update_image()
+    
+    def actual_size(self):
+        self.zoom_factor = 1.0
+        self.update_image()
+    
+    def fit_to_window(self):
+        if not self.original_pixmap.isNull():
+            # Calculate zoom factor to fit image in scroll area
+            scroll_size = self.scroll_area.size()
+            image_size = self.original_pixmap.size()
+            
+            # Account for scroll bars
+            available_width = scroll_size.width() - 20
+            available_height = scroll_size.height() - 20
+            
+            width_ratio = available_width / image_size.width()
+            height_ratio = available_height / image_size.height()
+            
+            self.zoom_factor = min(width_ratio, height_ratio, 1.0)  # Don't zoom in beyond actual size
+            self.update_image()
+
+class PDFViewerDialog(QDialog):
+    def __init__(self, file_path, file_name, parent=None):
+        super().__init__(parent)
+        self.file_path = file_path
+        self.file_name = file_name
+        self.initUI()
+        
+    def initUI(self):
+        self.setWindowTitle(f"PDF Viewer - {self.file_name}")
+        self.setMinimumSize(800, 600)
+        self.resize(1000, 700)
+        
+        layout = QVBoxLayout()
+        
+        # Info label
+        info_label = QLabel(f"PDF File: {self.file_name}")
+        info_label.setStyleSheet("""
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #2d2d2d;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        """)
+        layout.addWidget(info_label)
+        
+        # PDF info
+        pdf_info = QTextEdit()
+        pdf_info.setReadOnly(True)
+        pdf_info.setStyleSheet("""
+            QTextEdit {
+                background-color: #2d2d2d;
+                color: white;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 14px;
+            }
+        """)
+        
+        # Get file info
+        file_size = os.path.getsize(self.file_path)
+        size_mb = file_size / (1024 * 1024)
+        
+        info_text = f"""PDF Document Information:
+
+File: {self.file_name}
+Size: {size_mb:.2f} MB
+Path: {self.file_path}
+
+This PDF can be opened with your default PDF viewer using the button below.
+
+Note: Full PDF rendering within the application requires additional dependencies.
+For now, you can view basic file information and open with external viewer."""
+        
+        pdf_info.setPlainText(info_text)
+        layout.addWidget(pdf_info)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        open_external_btn = QPushButton("Open with Default PDF Viewer")
+        open_external_btn.clicked.connect(self.open_external)
+        open_external_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        """)
+        button_layout.addWidget(open_external_btn)
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #d83b01;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #ea4a1f;
+            }
+        """)
+        button_layout.addWidget(close_btn)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #1e1e1e;
+            }
+        """)
+    
+    def open_external(self):
+        """Open PDF with external application"""
+        try:
+            import subprocess
+            import platform
+            
+            system = platform.system()
+            if system == 'Windows':
+                os.startfile(self.file_path)
+            elif system == 'Darwin':  # macOS
+                subprocess.run(['open', self.file_path])
+            else:  # Linux
+                subprocess.run(['xdg-open', self.file_path])
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Could not open PDF with external viewer:\n{str(e)}"
+            )
 
 class StatusChangeDialog(QDialog):
     def __init__(self, opportunity, new_status, parent=None):
